@@ -5,8 +5,7 @@
 @theme {
 
   --font-montserrat: Montserrat,sans-serif;
-  
-  --color-mint-500: oklch(0.72 0.11 178);
+
   --color-custom-green:rgb(115,182,79);
   --color--custom-purple:rgb(155, 81, 224);
 }

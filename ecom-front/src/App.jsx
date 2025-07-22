@@ -1,11 +1,10 @@
 import './App.css';
+import Products from './components/Products';
 
 function App() {
   return (
     <>
-      <h1 className="flex text-8xl font-bold items-center">
-        Hello world!
-      </h1>
+      <Products/>
 
     </>
   );
