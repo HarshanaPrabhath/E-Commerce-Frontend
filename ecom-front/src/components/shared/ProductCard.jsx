@@ -2,6 +2,9 @@ import { useState } from "react";
 import { FaShoppingCart } from "react-icons/fa";
 import ProductViewModal from "./ProductViewModal";
 import { truncateText } from "../utils/truncateText";
+import { addToCart } from "./../../store/actions/index";
+import { useDispatch } from "react-redux";
+import toast from "react-hot-toast";
 
 const ProductCard = ({
   productId,
@@ -12,15 +15,22 @@ const ProductCard = ({
   price,
   discount,
   specialPrice,
+  about = false,
 }) => {
   const [openProductViewModel, setOpenProductViewModel] = useState(false);
   const btnLoader = false;
   const [selectedViewProduct, setSelectedViewProduct] = useState("");
   const isAvailable = quantity && Number(quantity) > 0;
-
+  const dispatch = useDispatch();
   const handleProductView = (product) => {
-    setSelectedViewProduct(product);
-    setOpenProductViewModel(true);
+    if (!about) {
+      setSelectedViewProduct(product);
+      setOpenProductViewModel(true);
+    }
+  };
+
+  const addToCartHandler = (cartItems) => {
+    dispatch(addToCart(cartItems, 1,toast));
   };
 
   return (
@@ -51,43 +61,57 @@ const ProductCard = ({
           onClick={() => {}}
           className="text-2xl font-semibold  cursor-pointer"
         >
-          {truncateText(productName,50)}
+          {truncateText(productName, 50)}
         </h2>
       </div>
       <div className="pt-4 pl-3 min-h-20 max-h-20">
-        <p className="text-gray-600 text-small">{truncateText(description,90)}</p>
+        <p className="text-gray-600 text-small">
+          {truncateText(description, 90)}
+        </p>
       </div>
-
-      <div className="flex pt-2 items-center justify-between mr-8">
-        {specialPrice ? (
-          <div className="flex flex-col mb-4 ml-5">
-            <span className="text-gray-500 line-through">
-              ${Number(price).toFixed(2)}
-            </span>
-            <span className="text-xl font-bold text-slate-700">
-              ${Number(specialPrice).toFixed(2)}
-            </span>
-          </div>
-        ) : (
-          <div>
-            <span className="text-xl font-bold text-slate-700">
-              ${Number(price).toFixed(2)}
-            </span>
-          </div>
-        )}
-        <button
-          disabled={!isAvailable || btnLoader}
-          onClick={() => {}}
-          className={`bg-blue-500 rounded p-2  text-white flex items-center  ${
-            isAvailable
-              ? "opacity-100 hover:bg-blue-600 transition-colors duration-300 w-36 justify-center"
-              : "opacity-70"
-          }`}
-        >
-          <FaShoppingCart className="text-lg mr-2 " />
-          {isAvailable ? "Add to Cart" : "Stock Out"}
-        </button>
-      </div>
+      {!about && (
+        <div className="flex pt-2 items-center justify-between mr-8">
+          {specialPrice ? (
+            <div className="flex flex-col mb-4 ml-5">
+              <span className="text-gray-500 line-through">
+                ${Number(price).toFixed(2)}
+              </span>
+              <span className="text-xl font-bold text-slate-700">
+                ${Number(specialPrice).toFixed(2)}
+              </span>
+            </div>
+          ) : (
+            <div>
+              <span className="text-xl font-bold text-slate-700">
+                ${Number(price).toFixed(2)}
+              </span>
+            </div>
+          )}
+          <button
+            disabled={!isAvailable || btnLoader}
+            onClick={() =>
+              addToCartHandler({
+                productId,
+                productName,
+                image,
+                description,
+                quantity,
+                price,
+                discount,
+                specialPrice,
+              })
+            }
+            className={`bg-blue-500 rounded p-2  text-white flex items-center  ${
+              isAvailable
+                ? "opacity-100 hover:bg-blue-600 transition-colors duration-300 w-36 justify-center"
+                : "opacity-70"
+            }`}
+          >
+            <FaShoppingCart className="text-lg mr-2 " />
+            {isAvailable ? "Add to Cart" : "Stock Out"}
+          </button>
+        </div>
+      )}
 
       <ProductViewModal
         open={openProductViewModel}

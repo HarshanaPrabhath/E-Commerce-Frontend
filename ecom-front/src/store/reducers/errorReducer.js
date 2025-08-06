@@ -35,11 +35,13 @@ export const errorReducer = (state = initialState, action) => {
                 ...state,
                 categoryLoader: false,
                 errorMessage: null,
+                categoryError:null,
             };
         case "CATEGORY_ERROR":
             return {
                 ...state,
                 isLoading: false,
+                categoryLoader:false,
                 errorMessage: action.payload,
             };
         default:
