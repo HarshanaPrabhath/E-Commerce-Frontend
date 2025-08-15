@@ -7,14 +7,11 @@ import { Autoplay, Pagination, EffectFade, Navigation } from "swiper/modules";
 import { bannerList } from "./../utils/index";
 import { Link } from "react-router-dom";
 
-const colorList = [
-  "bg-blue-400",
-  "bg-red-600",
-  "bg-green-700",
-  "bg-purple-800",
-  "bg-yellow-600",
-  // You can add more Tailwind color classes as needed
-];
+const colorList =  [
+  "bg-gradient-to-r from-amber-400 to-pink-500",
+    "bg-gradient-to-r from-lime-500 to-teal-600",
+    "bg-gradient-to-r from-blue-500 to-cyan-500"
+  ]
 
 const HeroBanner = () => {
   return (
@@ -60,7 +57,7 @@ const HeroBanner = () => {
                 </div>
               </div>
               <div className="w-full flex justify-center  lg:w-1/2 p-4">
-                <img className="rounded-2xl" src={item?.image} />
+                <img className="rounded-2xl w-auto h-[60vh]" src={item?.image} />
               </div>
             </div>
              </div>
