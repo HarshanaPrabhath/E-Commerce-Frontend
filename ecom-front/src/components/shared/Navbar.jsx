@@ -85,7 +85,7 @@ const Navbar = () => {
           <li className="font-[500] transition-all duration-150">
             <Link
               to="/login"
-              className="flex items-center gap-2 text-white bg-gradient-to-r from-pink-400 via-pink-500 to-pink-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 font-medium rounded-md px-4 py-2 text-center"
+              className="flex items-center gap-2 text-white bg-gradient-to-r from-pink-400 via-pink-500 to-pink-600 hover:bg-gradient-to-br focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 font-medium rounded-md px-4 py-2 text-center"
             >
               <FaSignInAlt />
               Login
