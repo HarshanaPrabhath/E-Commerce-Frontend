@@ -32,7 +32,7 @@ export default function ProductViewModal({
       <Dialog
         open={open}
         as="div"
-        className="relative z-10 "
+        className="relative z-100 "
         onClose={() => setOpen(false)}
       >
         <DialogBackdrop className="fixed inset-0 bg-black/30" />

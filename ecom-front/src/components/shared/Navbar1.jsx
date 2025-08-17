@@ -16,12 +16,15 @@ import { Dialog } from "@headlessui/react";
 import { Badge } from "@mui/material";
 import { FaShoppingCart } from "react-icons/fa";
 import { useSelector } from "react-redux";
+import UserMenu from "../UserMenu";
 
 function Navbar1() {
 
       const path = useLocation().pathname;
   
   const {cart} = useSelector((state) => state.carts)
+  const {user} = useSelector((state)=>state.auth);
+  
   
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -77,7 +80,7 @@ function Navbar1() {
     <>
       {/* Navbar */}
 {/* Dark Teal Single Color */}
-<nav className="sticky top-0 bg-teal-800 backdrop-blur-md text-white px-6 py-5 shadow-lg fixed w-full top-0 z-50">
+<nav className="sticky top-0 bg-gradient-to-r from-teal-800 to-teal-700 backdrop-blur-md text-white px-6 py-5 shadow-lg fixed w-full top-0 z-50">
 
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           {/* Logo */}
@@ -106,12 +109,12 @@ function Navbar1() {
             
             {/* <NavLink label="Profile" to="/user-dashboard" icon={<User size={18} />} /> */}
 
-            {isLoggedIn ? (
+            {(user && user.userId )? (
               <button
-                onClick={handleLogout}
+                // onClick={handleLogout}
                 className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-lg px-4 py-2 rounded font-medium transition duration-200 shadow-sm hover:shadow-md"
               >
-                <LogOut size={20} /> Logout
+                <UserMenu/>
               </button>
             ) : (
               <button
@@ -155,15 +158,15 @@ function Navbar1() {
                 <FaShoppingCart size={25} />
               </Badge>} to="/cart" onClick={toggleMenu} mobile />
 
-          {isLoggedIn ? (
+          {user && user.userId ? (
             <button
               onClick={() => {
                 toggleMenu();
-                handleLogout();
+                // handleLogout();
               }}
               className="mt-5 w-full flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 text-white text-sm px-4 py-2 rounded font-medium transition shadow"
             >
-              <LogOut size={18} /> Logout
+              <UserMenu/>
             </button>
           ) : (
             <button
