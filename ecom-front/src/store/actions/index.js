@@ -1,6 +1,4 @@
-import { current } from "@reduxjs/toolkit";
-import { api } from "../../api/api";
-import { toast } from "react-hot-toast";
+import { api } from "../../services/api/api";
 
 export const fetchProducts = (queryString) => async (dispatch) => {
   try {
@@ -29,7 +27,7 @@ export const fetchProducts = (queryString) => async (dispatch) => {
     });
   }
 };
-export const fetchCategories = (queryString) => async (dispatch) => {
+export const fetchCategories = () => async (dispatch) => {
   try {
     dispatch({ type: "CATEGORY_LOADER" });
     const { data } = await api.get(`/public/categories`);
@@ -115,7 +113,7 @@ export const decreaseCartQuantity =
     localStorage.setItem("cartItems", JSON.stringify(getState().carts.cart));
   };
 
-export const addProduct = (sendData, toast,navigate) => async (dispatch) => {
+export const addProduct = (sendData, toast,navigate) => async () => {
   try {
     const { data } = await api.post("/admin/categories/5/product",sendData);
     toast.success(data?.message || "Product Added Successfully");
@@ -149,24 +147,23 @@ export const authenticateSignInUser =
       navigate("/");
     } catch (error) {
       console.log(error);
-      toast.error(error.response.data.messsage || "Internal Server Error");
+      toast.error(error?.response?.data?.message || "Internal Server Error");
     } finally {
       setLoader(false);
     }
   };
 
 export const registerNewUser =
-  (sendData, toast, reset, navigate, setLoader) => async (dispatch) => {
+  (sendData, toast, reset, navigate, setLoader) => async () => {
     try {
       setLoader(true);
-
       const { data } = await api.post("/auth/register", sendData);
       reset();
       toast.success(data?.message || "User Registered Successfully");
       navigate("/login");
     } catch (error) {
       console.log(error);
-      toast.error(error?.response?.data?.messsage || "Internal Server Error");
+      toast.error(error?.response?.data?.message || "Internal Server Error");
     } finally {
       setLoader(false);
     }

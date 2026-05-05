@@ -1,12 +1,35 @@
-# React + Vite
+# E-Commerce Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend app built with React + Vite + Redux Toolkit.
 
-Currently, two official plugins are available:
+## Project Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```text
+src/
+  app/                  # App shell, layouts, router
+  features/             # Feature modules (auth, cart, home, info, products, not-found)
+  shared/               # Reusable UI, guards, utils, constants
+  services/             # External services (api clients)
+  store/                # Redux store, reducers, actions
+  assets/               # Static assets
+```
 
-## Expanding the ESLint configuration
+## Structure Rules
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Route-level screens go under `features/<feature>/pages`.
+2. Feature-specific UI/hooks stay inside that feature module.
+3. Shared and reusable UI goes to `shared/components`.
+4. Shared pure helpers go to `shared/utils`.
+5. API integrations go to `services/api`.
+
+## Scripts
+
+```bash
+npm run dev
+npm run build
+npm run preview
+```
+
+## Import Alias
+
+`@/` points to `src/` (configured in `vite.config.js` and `jsconfig.json`).
