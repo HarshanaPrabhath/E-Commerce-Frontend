@@ -93,7 +93,7 @@ function UserMenu() {
                     aria-labelledby="user-menu-button"
                     onKeyDown={handleListKeyDown}
                   >
-                    <MenuItem onClick={()=>navigate("/add-product")}>Add Product</MenuItem>
+                    <MenuItem onClick={()=>navigate("/manage-products")}>Manage Products</MenuItem>
                     <MenuItem onClick={handleClose}>Order</MenuItem>
                     <MenuItem onClick={logOutHandler}>Logout</MenuItem>
                   </MenuList>

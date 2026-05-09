@@ -3,19 +3,19 @@ import { productReducer } from "./reducers/productReducer";
 import { errorReducer } from "./reducers/errorReducer";
 import { cartReducer } from "./reducers/cartReducer";
 import { authReducer } from "./reducers/authReducer";
+import { orderReducer } from "./reducers/orderReducer";
+import { getStoredAuth } from "../shared/utils/authStorage";
 
-const user = localStorage.getItem("auth")
-    ?JSON.parse(localStorage.getItem("auth"))
-    :null;
+const user = getStoredAuth();
 
-
-const cartItems = localStorage.getItem("cartItems")
-    ?JSON.parse(localStorage.getItem("cartItems"))
-    :[];
+const orders = localStorage.getItem("orders")
+    ? JSON.parse(localStorage.getItem("orders"))
+    : [];
 
 const initialState = {
     auth:{user:user},
-    carts:{cart:cartItems}
+    carts:{cart:[]},
+    orders:{orders},
 };
 
 export const store = configureStore({
@@ -24,6 +24,7 @@ export const store = configureStore({
         errors:errorReducer,
         carts:cartReducer,
         auth  : authReducer,
+        orders: orderReducer,
     },
     preloadedState:initialState
 });

@@ -56,7 +56,7 @@ function Login() {
                             label="Email Address"
                             required
                             id="email"
-                            type="text"
+                            type="email"
                             register={register}
                             message="Email is required"
                             placeholder="hello@example.com"
@@ -71,7 +71,7 @@ function Login() {
                             type="password"
                             register={register}
                             message="Password is required"
-                            placeholder="••••••••"
+                            placeholder="********"
                             errors={errors} 
                         />
                         <div className="flex justify-end mt-2">

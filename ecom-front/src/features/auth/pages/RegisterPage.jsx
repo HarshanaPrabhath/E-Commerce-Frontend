@@ -66,7 +66,7 @@ function Register() {
                         <InputField label="Email Address"
                             required
                             id="email"
-                            type="text"
+                            type="email"
                             register={register}
                             message="Email is required"
                             placeholder="name@company.com"
@@ -81,7 +81,7 @@ function Register() {
                             min={6}
                             register={register}
                             message="Password is required"
-                            placeholder="••••••••"
+                            placeholder="********"
                             errors={errors} 
                         />
                     </div>

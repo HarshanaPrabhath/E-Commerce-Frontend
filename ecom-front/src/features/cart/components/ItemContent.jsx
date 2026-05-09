@@ -5,6 +5,7 @@ import SetQuantity from "./SetQuantity";
 import { decreaseCartQuantity, increaseCartQuantity, removeFromCart } from "../../../store/actions";
 import { formatPrice } from "../../../shared/utils/formatPrice";
 import { truncateText } from "../../../shared/utils/truncateText";
+import { HiOutlineTrash } from "react-icons/hi"; // Adding a subtle icon for the remove button
 
 const ItemContent = ({
   productId,
@@ -17,100 +18,98 @@ const ItemContent = ({
   specialPrice,
   cartId,
 }) => {
-  const [currentQuantity, setCurrentQuantity] = useState(quantity);
+  const [isUpdating, setIsUpdating] = useState(false);
   const dispatch = useDispatch();
 
+  const productData = {
+    productId,
+    productName,
+    image,
+    description,
+    quantity,
+    price,
+    discount,
+    specialPrice,
+    cartId,
+  };
+
   const handleQtyIncrease = (cartItems) => {
-    dispatch(increaseCartQuantity(cartItems, toast, currentQuantity, setCurrentQuantity));
+    if (isUpdating) return;
+    setIsUpdating(true);
+    dispatch(increaseCartQuantity(cartItems.productId, toast)).finally(() =>
+      setIsUpdating(false)
+    );
   };
 
   const handleQtyDecrease = (cartItems) => {
-    if (currentQuantity > 1) {
-      const newQuantity = currentQuantity - 1;
-      setCurrentQuantity(newQuantity);
-      dispatch(decreaseCartQuantity(cartItems, newQuantity));
-    }
+    if (isUpdating || Number(quantity) <= 1) return;
+    setIsUpdating(true);
+    dispatch(decreaseCartQuantity(cartItems.productId, toast)).finally(() =>
+      setIsUpdating(false)
+    );
   };
 
   const removeItemFromCart = (cartItems) => {
-    dispatch(removeFromCart(cartItems, toast));
+    if (isUpdating) return;
+    setIsUpdating(true);
+    dispatch(removeFromCart(cartItems, toast)).finally(() => setIsUpdating(false));
   };
 
   return (
-    <div className="grid md:grid-cols-5 grid-cols-4 md:text-md text-sm gap-4 items-center border-[1px] mt-3">
-      <div className="md:col-span-2 justify-self-start flex flex-col gap-2 p-5">
-        <div className="flex md:flex-row flex-col lg:gap-4 sm:gap-3 gap-0 items-start ">
-          <h3 className="lg:text-[17px] text-sm font-semibold text-slate-600">
-            {truncateText(productName)}
-          </h3>
-        </div>
-        <div className="md:w-36 sm:w-24 w-12">
+    <div className="grid md:grid-cols-5 grid-cols-4 md:text-md text-sm gap-4 items-center py-6 border-b border-slate-100 hover:bg-slate-50/50 transition-colors duration-300">
+      
+      {/* Product Information Section */}
+      <div className="md:col-span-2 justify-self-start flex items-center gap-4 lg:gap-6 px-2">
+        <div className="shrink-0">
           <img
             src={image}
             alt={productName}
-            className="md:h-36 sm:h-24 h-12 w-full object-cover rounded-md"
+            className="md:h-28 md:w-28 h-16 w-16 object-cover rounded-2xl border border-slate-100 shadow-sm"
           />
         </div>
-        <div className="flex items-start gap-5 mt-3">
+        
+        <div className="flex flex-col gap-1">
+          <h3 className="lg:text-lg text-sm font-black text-teal-900 leading-tight">
+            {truncateText(productName, 40)}
+          </h3>
+          <p className="text-xs text-slate-400 mb-2 hidden md:block">
+            Quantity: {quantity}
+          </p>
+          
           <button
-            onClick={() =>
-              removeItemFromCart({
-                productId,
-                productName,
-                image,
-                description,
-                quantity,
-                price,
-                discount,
-                specialPrice,
-                cartId,
-              })
-            }
-            className="flex items-center font-semibold space-x-2 px-4 py-1 text-xs border border-rose-600 rounded-md hover:bg-red-50 transition-colors duration-200"
+            onClick={() => removeItemFromCart(productData)}
+            className="flex items-center gap-1 text-slate-400 hover:text-rose-500 transition-colors duration-200 text-xs font-bold uppercase tracking-widest"
           >
-            Remove
+            <HiOutlineTrash size={16} />
+            <span>Remove</span>
           </button>
         </div>
       </div>
-      <div className="justify-self-center lg:text-[17px] text-sm text-slate-600 font-semibold">
-        {formatPrice(Number(specialPrice))}
+
+      {/* Unit Price */}
+      <div className="justify-self-center">
+        <span className="font-bold text-slate-600">
+          {formatPrice(Number(specialPrice))}
+        </span>
       </div>
 
-      <div className="justify-self-center ">
-        <SetQuantity
-          quantity={currentQuantity}
-          cardCounter
-          handleQtyIncrease={() =>
-            handleQtyIncrease({
-              productId,
-              productName,
-              image,
-              description,
-              quantity,
-              price,
-              discount,
-              specialPrice,
-              cartId,
-            })
-          }
-          handleQtyDecrease={() => {
-            handleQtyDecrease({
-              productId,
-              productName,
-              image,
-              description,
-              quantity,
-              price,
-              discount,
-              specialPrice,
-              cartId,
-            });
-          }}
-        />
+      {/* Quantity Selector */}
+      <div className="justify-self-center">
+        <div className="scale-90 md:scale-100">
+          <SetQuantity
+            quantity={quantity}
+            cardCounter
+            handleQtyIncrease={() => handleQtyIncrease(productData)}
+            handleQtyDecrease={() => handleQtyDecrease(productData)}
+          />
+        </div>
       </div>
 
-      <div className="justify-self-center lg:text-[17px] text-sm text-slate-600 font-semibold">
-        {formatPrice(Number(currentQuantity) * Number(specialPrice))}
+      {/* Total Price for this item */}
+      <div className="justify-self-center">
+        <span className="lg:text-lg font-black text-teal-700">
+          {formatPrice(Number(quantity) * Number(specialPrice))}
+        </span>
       </div>
     </div>
   );

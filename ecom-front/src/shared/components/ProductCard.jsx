@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaShoppingCart } from "react-icons/fa";
+import { ShoppingBag, Loader2, Star, ArrowUpRight } from "lucide-react";
 import ProductViewModal from "./ProductViewModal";
 import { truncateText } from "../utils/truncateText";
 import { addToCart } from "./../../store/actions/index";
@@ -7,119 +7,152 @@ import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
 
 const ProductCard = ({
-  productId,
-  productName,
-  image,
-  description,
-  quantity,
-  price,
-  discount,
-  specialPrice,
-  about = false,
-}) => {
+                       productId,
+                       productName,
+                       category,
+                       categoryName,
+                       image,
+                       description,
+                       quantity,
+                       price,
+                       discount,
+                       specialPrice,
+                       about = false,
+                       adminView = false,
+                     }) => {
   const [openProductViewModel, setOpenProductViewModel] = useState(false);
-  const btnLoader = false;
-  const [selectedViewProduct, setSelectedViewProduct] = useState("");
+  const [btnLoader, setBtnLoader] = useState(false);
   const isAvailable = quantity && Number(quantity) > 0;
+
+  const resolvedCategoryName =
+      categoryName || category?.categoryName || category?.name || "General";
+
   const dispatch = useDispatch();
-  const handleProductView = (product) => {
+
+  const handleProductView = () => {
     if (!about) {
-      setSelectedViewProduct(product);
       setOpenProductViewModel(true);
     }
   };
 
-  const addToCartHandler = (cartItems) => {
-    dispatch(addToCart(cartItems, 1,toast));
+  const addToCartHandler = async (e) => {
+    e.stopPropagation(); // Prevents opening modal when clicking button
+    if (btnLoader || !isAvailable) return;
+
+    setBtnLoader(true);
+    try {
+      await dispatch(addToCart({
+        productId, productName, image, description, quantity, price, discount, specialPrice
+      }, 1, toast));
+    } finally {
+      setBtnLoader(false);
+    }
   };
 
   return (
-    <div className="mb-6  border-0 rounded-lg shadow-xl overflow-hidden transition-shadow duration-300">
       <div
-        onClick={() => {
-          handleProductView({
-            id: productId,
-            productName,
-            image,
-            description,
-            quantity,
-            price,
-            discount,
-            specialPrice,
-          });
-        }}
-        className="w-full overflow-hidden aspect[3/1]"
+          onClick={handleProductView}
+          className="group relative bg-white rounded-[2.5rem] p-3 transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(20,184,166,0.15)] border border-transparent hover:border-teal-100 cursor-pointer"
       >
-        <img
-          src={image}
-          alt={productName}
-          className="w-full h-full cursor-pointer transition-transform duration-300 transform hover:scale-105"
-        />
-      </div>
-      <div className="pt-4 pl-4">
-        <h2
-          onClick={() => {}}
-          className="text-2xl font-semibold  cursor-pointer"
-        >
-          {truncateText(productName, 50)}
-        </h2>
-      </div>
-      <div className="pt-4 pl-3 min-h-20 max-h-20">
-        <p className="text-gray-600 text-small">
-          {truncateText(description, 90)}
-        </p>
-      </div>
-      {!about && (
-        <div className="flex pt-2 items-center justify-between mr-8">
-          {specialPrice ? (
-            <div className="flex flex-col mb-4 ml-5">
-              <span className="text-gray-500 line-through">
-                ${Number(price).toFixed(2)}
-              </span>
-              <span className="text-xl font-bold text-slate-700">
-                ${Number(specialPrice).toFixed(2)}
-              </span>
-            </div>
-          ) : (
-            <div>
-              <span className="text-xl font-bold text-slate-700">
-                ${Number(price).toFixed(2)}
-              </span>
-            </div>
-          )}
-          <button
-            disabled={!isAvailable || btnLoader}
-            onClick={() =>
-              addToCartHandler({
-                productId,
-                productName,
-                image,
-                description,
-                quantity,
-                price,
-                discount,
-                specialPrice,
-              })
-            }
-            className={`bg-blue-500 rounded p-2  text-white flex items-center  ${
-              isAvailable
-                ? "opacity-100 hover:bg-blue-600 transition-colors duration-300 w-36 justify-center"
-                : "opacity-70"
-            }`}
-          >
-            <FaShoppingCart className="text-lg mr-2 " />
-            {isAvailable ? "Add to Cart" : "Stock Out"}
-          </button>
-        </div>
-      )}
+        {/* --- IMAGE SECTION --- */}
+        <div className="relative aspect-square overflow-hidden rounded-[2rem] bg-[#fdfdfd] border border-slate-50">
+          <img
+              src={image || "http://localhost:5000/images/default.png"}
+              alt={productName}
+              className="w-full h-full object-contain p-6 transition-transform duration-700 group-hover:scale-110"
+          />
 
-      <ProductViewModal
-        open={openProductViewModel}
-        setOpen={setOpenProductViewModel}
-        product={selectedViewProduct}
-        isAvailable={isAvailable}
-      />
-    </div>
+          {/* Top Badges */}
+          <div className="absolute top-4 left-4 flex flex-col gap-2">
+            {specialPrice && (
+                <span className="bg-orange-500 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full shadow-lg shadow-orange-200">
+              Sale
+            </span>
+            )}
+            {!isAvailable && (
+                <span className="bg-slate-900 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full">
+              Sold Out
+            </span>
+            )}
+          </div>
+
+          {/* Floating Teal Add to Cart Button */}
+          {isAvailable && !adminView && !about && (
+              <button
+                  onClick={addToCartHandler}
+                  disabled={btnLoader}
+                  className="absolute bottom-4 right-4 w-12 h-12 bg-teal-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-teal-200 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hover:bg-orange-500 active:scale-90"
+              >
+                {btnLoader ? (
+                    <Loader2 className="animate-spin" size={18} />
+                ) : (
+                    <ShoppingBag size={18} />
+                )}
+              </button>
+          )}
+        </div>
+
+        {/* --- CONTENT SECTION --- */}
+        <div className="mt-5 px-3 pb-2">
+          <div className="flex justify-between items-start mb-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">
+              {resolvedCategoryName}
+            </p>
+            <div className="flex items-center gap-1">
+              <Star size={10} className="fill-orange-400 text-orange-400" />
+              <span className="text-[10px] font-bold text-slate-400">4.9</span>
+            </div>
+          </div>
+
+          <h2 className="text-xl font-bold tracking-tight text-slate-800 leading-tight group-hover:text-teal-700 transition-colors">
+            {truncateText(productName, 35)}
+          </h2>
+
+          <p className="mt-2 text-slate-500 text-xs leading-relaxed line-clamp-2">
+            {truncateText(description, 70)}
+          </p>
+
+          {/* --- PRICING SECTION --- */}
+          <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
+            <div className="flex flex-col">
+              {specialPrice ? (
+                  <>
+                <span className="text-[10px] text-slate-400 line-through font-bold leading-none">
+                  ${Number(price).toFixed(2)}
+                </span>
+                    <span className="text-xl font-black text-slate-900">
+                  ${Number(specialPrice).toFixed(2)}
+                </span>
+                  </>
+              ) : (
+                  <span className="text-xl font-black text-slate-900">
+                ${Number(price).toFixed(2)}
+              </span>
+              )}
+            </div>
+
+            <div className="flex items-center text-orange-500 font-black text-[10px] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+              Details <ArrowUpRight size={14} className="ml-0.5" />
+            </div>
+          </div>
+        </div>
+
+        <ProductViewModal
+            open={openProductViewModel}
+            setOpen={setOpenProductViewModel}
+            product={{
+              id: productId,
+              productName,
+              categoryName: resolvedCategoryName,
+              image,
+              description,
+              quantity,
+              price,
+              discount,
+              specialPrice,
+            }}
+            isAvailable={isAvailable}
+        />      </div>
   );
 };
 

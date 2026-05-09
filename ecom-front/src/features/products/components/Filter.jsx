@@ -37,7 +37,11 @@ const Filter = ({ categories }) => {
       } else {
         params.delete("keyword");
       }
-      navigate(`${pathname}?${params.toString()}`, { replace: true });
+      const nextQuery = params.toString();
+      const currentQuery = searchParams.toString();
+      if (nextQuery !== currentQuery) {
+        navigate(`${pathname}?${nextQuery}`, { replace: true });
+      }
     }, 700);
     return () => clearTimeout(handler);
   }, [searchTerm, navigate, pathname, searchParams]);
@@ -50,6 +54,7 @@ const Filter = ({ categories }) => {
     } else {
       params.set("category", selectedCategory);
     }
+    params.delete("page");
     navigate(`${pathname}?${params.toString()}`);
     setCategory(selectedCategory);
   };
@@ -64,6 +69,7 @@ const Filter = ({ categories }) => {
     const params = new URLSearchParams(searchParams);
     const newOrder = sortOrder === "asc" ? "desc" : "asc";
     params.set("sortby", newOrder);
+    params.delete("page");
     navigate(`${pathname}?${params.toString()}`);
     setSortOrder(newOrder);
   };
@@ -114,7 +120,7 @@ const Filter = ({ categories }) => {
         </FormControl>
 
         {/* Sort Button */}
-        <Tooltip title={`Price: ${sortOrder === 'asc' ? 'Low to High' : 'High to Low'}`}>
+        <Tooltip title={`Name: ${sortOrder === 'asc' ? 'A to Z' : 'Z to A'}`}>
           <button
             onClick={toggleSortOrder}
             className="flex items-center gap-3 h-[40px] px-5 bg-teal-800 hover:bg-teal-900 text-white rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg shadow-teal-900/10"
