@@ -3,15 +3,17 @@ import toast from "react-hot-toast";
 import { adminProductApi, extractApiErrorMessage } from "../api/adminProductApi";
 import AdminProductForm from "../components/AdminProductForm";
 import AdminProductFilters from "../components/AdminProductFilters";
+import AdminProductsPaginationControls from "../components/AdminProductsPaginationControls";
 import AdminProductTable from "../components/AdminProductTable";
 import { uploadImageToCloudinary } from "../../../shared/utils/cloudinaryUpload";
+import { normalizeImageUrl } from "../../../shared/utils/imageUrl";
 
 const initialForm = {
   productName: "",
   description: "",
-  quantity: 0,
-  price: 0,
-  discount: 0,
+  quantity: "",
+  price: "",
+  discount: "",
   image: "",
   categoryId: "",
 };
@@ -29,6 +31,8 @@ function AdminProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [stockFilter, setStockFilter] = useState("all");
   const [sortBy, setSortBy] = useState("name-asc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
 
   const loadCategories = useCallback(async () => {
     try {
@@ -68,7 +72,10 @@ function AdminProductsPage() {
     }
     setForm((prev) => ({
       ...prev,
-      [name]: ["quantity", "price", "discount"].includes(name) ? Number(value) : value,
+      [name]:
+        name === "image"
+          ? normalizeImageUrl(value)
+          : value,
     }));
   };
 
@@ -86,7 +93,7 @@ function AdminProductsPage() {
       if (!imageUrl) {
         throw new Error("No image URL returned from Cloudinary.");
       }
-      setForm((prev) => ({ ...prev, image: imageUrl }));
+      setForm((prev) => ({ ...prev, image: normalizeImageUrl(imageUrl) }));
       toast.success("Image uploaded.");
     } catch (error) {
       setUploadError(error?.message || "Image upload failed.");
@@ -122,7 +129,7 @@ function AdminProductsPage() {
         quantity: Number(form.quantity),
         image: form.image,
         price: Number(form.price),
-        discount: Number(form.discount),
+        discount: Number(form.discount || 0),
       };
 
       if (editingId) {
@@ -146,16 +153,17 @@ function AdminProductsPage() {
     setForm({
       productName: product.productName,
       description: product.description,
-      quantity: Number(product.quantity),
-      price: Number(product.price),
-      discount: Number(product.discount || 0),
+      quantity: String(Number(product.quantity)),
+      price: String(Number(product.price)),
+      discount: String(Number(product.discount || 0)),
       image: product.image,
       categoryId: product.categoryId,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const onDelete = async (id) => {
+  const onDelete = async (product) => {
+    const id = product?.id;
     if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
       await adminProductApi.deleteProduct(id);
@@ -165,12 +173,34 @@ function AdminProductsPage() {
         resetForm();
       }
     } catch (error) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        toast.error("Delete failed: admin authorization required.");
+        return;
+      }
       toast.error(extractApiErrorMessage(error, "Failed to delete product."));
     }
   };
 
   const filteredProducts = useMemo(() => {
+    const categoryNameById = new Map(
+      categories.map((category) => [String(category.id), category.name])
+    );
+    const categoryIdByName = new Map(
+      categories.map((category) => [
+        String(category.name || "").trim().toLowerCase(),
+        String(category.id),
+      ])
+    );
+
     let next = [...products];
+    next = next.map((item) => ({
+      ...item,
+      categoryName:
+        String(item?.categoryName || "").trim() ||
+        categoryNameById.get(String(item?.categoryId || "")) ||
+        "-",
+    }));
 
     const normalizedSearch = searchTerm.trim().toLowerCase();
     if (normalizedSearch) {
@@ -182,7 +212,23 @@ function AdminProductsPage() {
     }
 
     if (categoryFilter !== "all") {
-      next = next.filter((item) => String(item?.categoryId) === categoryFilter);
+      const selectedCategoryName = String(categoryNameById.get(String(categoryFilter)) || "")
+        .trim()
+        .toLowerCase();
+      next = next.filter((item) => {
+        const directId = String(item?.categoryId || "").trim();
+        if (directId && directId === String(categoryFilter)) {
+          return true;
+        }
+
+        const itemCategoryName = String(item?.categoryName || "").trim().toLowerCase();
+        if (!itemCategoryName || !selectedCategoryName) {
+          return false;
+        }
+
+        const resolvedIdFromName = categoryIdByName.get(itemCategoryName);
+        return resolvedIdFromName === String(categoryFilter);
+      });
     }
 
     if (stockFilter === "in") {
@@ -214,7 +260,27 @@ function AdminProductsPage() {
     });
 
     return next;
-  }, [products, searchTerm, categoryFilter, stockFilter, sortBy]);
+  }, [products, categories, searchTerm, categoryFilter, stockFilter, sortBy]);
+
+  const totalPages = useMemo(() => {
+    const total = Math.ceil(filteredProducts.length / pageSize);
+    return total > 0 ? total : 1;
+  }, [filteredProducts.length, pageSize]);
+
+  const pagedProducts = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredProducts.slice(start, start + pageSize);
+  }, [filteredProducts, page, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, categoryFilter, stockFilter, sortBy, pageSize]);
 
   const hasActiveFilters = Boolean(
     searchTerm.trim() ||
@@ -228,6 +294,7 @@ function AdminProductsPage() {
     setCategoryFilter("all");
     setStockFilter("all");
     setSortBy("name-asc");
+    setPage(1);
   };
 
   return (
@@ -275,7 +342,7 @@ function AdminProductsPage() {
 
         <AdminProductTable
           loading={loading}
-          products={filteredProducts}
+          products={pagedProducts}
           onEdit={onEdit}
           onDelete={onDelete}
         />

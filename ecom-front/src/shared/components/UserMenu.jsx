@@ -9,17 +9,16 @@ import {
   MenuList,
   Stack
 } from "@mui/material";
-import { useDispatch, useSelector } from "react-redux";
-import { logOutUser } from "../../store/actions";
 import { useNavigate } from "react-router-dom";
+import { useAppData } from "../../app/context/AppDataContext";
 
 function UserMenu() {
 
-  const {user} = useSelector((state) => state.auth);
+  const { user, signOut } = useAppData();
+  const loggedUser = user?.user || user;
   const [open, setOpen] = useState(false);
   const anchorRef = useRef(null);
 
-  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleToggle = () => {
@@ -33,9 +32,10 @@ function UserMenu() {
     setOpen(false);
   };
 
-  const logOutHandler =() =>{
-    dispatch(logOutUser(navigate));
-  }
+  const logOutHandler = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   const handleNavigate = (path) => {
     setOpen(false);
@@ -71,7 +71,7 @@ function UserMenu() {
           aria-haspopup="true"
           onClick={handleToggle}
         >
-         <span className="text-white ">{user?.username}</span>
+         <span className="text-white ">{loggedUser?.username}</span>
         </Button>
         <Popper
           open={open}

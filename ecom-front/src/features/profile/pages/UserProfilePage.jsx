@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { MdArrowBack, MdCircle, MdShoppingBag, MdPerson } from "react-icons/md";
+import { MdArrowBack, MdShoppingBag, MdPerson } from "react-icons/md";
 import { formatPrice } from "../../../shared/utils/formatPrice";
 import { api } from "../../../services/api/api";
+import { useAppData } from "../../../app/context/AppDataContext";
 import {
   resolveCurrentUserEmail,
   extractOrdersList,
@@ -12,7 +12,6 @@ import {
   resolveOrderEmail,
   resolveOrderId,
   resolveOrderItems,
-  resolveOrderStatus,
   resolveOrderTotal,
   resolveOrderUserId,
 } from "../../../shared/utils/orderData";
@@ -28,15 +27,16 @@ const formatDate = (value) => {
 };
 
 function UserProfilePage() {
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useAppData();
+  const loggedUser = user?.user || user;
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const currentUserId = useMemo(() => resolveCurrentUserId(user), [user]);
-  const currentUserEmail = useMemo(() => resolveCurrentUserEmail(user), [user]);
-  const username = user?.username || user?.user?.username || "User";
-  const email = currentUserEmail || user?.email || user?.user?.email || "N/A";
+  const currentUserId = useMemo(() => resolveCurrentUserId(loggedUser), [loggedUser]);
+  const currentUserEmail = useMemo(() => resolveCurrentUserEmail(loggedUser), [loggedUser]);
+  const username = loggedUser?.username || "User";
+  const email = currentUserEmail || loggedUser?.email || "N/A";
 
   useEffect(() => {
     const loadOrders = async () => {

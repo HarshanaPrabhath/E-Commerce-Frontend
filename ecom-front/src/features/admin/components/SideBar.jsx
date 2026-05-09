@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Boxes,
   Tags,
+  Mail,
   Store,
   LogOut,
   X,
@@ -14,6 +15,7 @@ const adminLinks = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { name: "Products", path: "/manage-products", icon: Boxes },
   { name: "Categories", path: "/manage-categories", icon: Tags },
+  { name: "Messages", path: "/manage-messages", icon: Mail },
 ];
 
 function SideBar({ mobile = false, onClose, onLogout }) {

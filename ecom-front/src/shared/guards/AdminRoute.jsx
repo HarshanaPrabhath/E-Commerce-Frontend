@@ -1,11 +1,11 @@
-import { useSelector } from "react-redux";
 import { Navigate, Outlet } from "react-router-dom";
 import { hasRole } from "../utils/authRoles";
+import { useAppData } from "../../app/context/AppDataContext";
 
 function AdminRoute() {
-  const { user } = useSelector((state) => state.auth);
-  return hasRole(user, "ROLE_ADMIN") ? <Outlet /> : <Navigate to="/" replace />;
+  const { user } = useAppData();
+  const loggedUser = user?.user || user;
+  return hasRole(loggedUser, "ROLE_ADMIN") ? <Outlet /> : <Navigate to="/" replace />;
 }
 
 export default AdminRoute;
-

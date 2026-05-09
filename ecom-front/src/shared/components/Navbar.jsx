@@ -12,17 +12,13 @@ import {
 } from "lucide-react";
 import { Badge } from "@mui/material";
 import { FaShoppingCart, FaStore } from "react-icons/fa";
-import { useDispatch, useSelector } from "react-redux";
-import { logOutUser } from "../../store/actions";
 import { hasRole } from "../utils/authRoles";
+import { useAppData } from "../../app/context/AppDataContext";
 
 function Navbar1() {
   const path = useLocation().pathname;
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  
-  const { cart } = useSelector((state) => state.carts);
-  const { user } = useSelector((state) => state.auth);
+  const { cart, user, signOut } = useAppData();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -35,9 +31,14 @@ function Navbar1() {
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
   const handleLogin = () => navigate("/login");
-  const handleSignOut = () => dispatch(logOutUser(navigate));
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
-  const isAdminUser = hasRole(user, "ROLE_ADMIN");
+  const loggedUser = user?.user || user;
+
+  const isAdminUser = hasRole(loggedUser, "ROLE_ADMIN");
 
   const baseNavLinks = [
     { name: "Home", link: "/", icon: <Home size={20} /> },
@@ -98,14 +99,14 @@ function Navbar1() {
                 </Badge>
               </Link>
 
-              {user && user.userId ? (
+              {loggedUser && (loggedUser.userId || loggedUser.id) ? (
                 <>
                   <Link
                     to="/profile"
                     className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl font-bold text-sm transition-all"
                   >
                     <User size={16} />
-                    <span>{user?.username || "Profile"}</span>
+                    <span>{loggedUser?.username || "Profile"}</span>
                   </Link>
                   <button
                     onClick={handleSignOut}
@@ -191,7 +192,7 @@ function Navbar1() {
               </span>
             </Link>
 
-            {user && user.userId ? (
+            {loggedUser && (loggedUser.userId || loggedUser.id) ? (
               <>
                 <Link
                   to="/profile"
@@ -199,7 +200,7 @@ function Navbar1() {
                   className="w-full flex items-center gap-3 px-6 py-5 rounded-2xl bg-white/5 text-white font-bold border border-white/10"
                 >
                   <User size={20} className="text-orange-400" />
-                  <span className="truncate">{user?.username || "Profile"}</span>
+                  <span className="truncate">{loggedUser?.username || "Profile"}</span>
                 </Link>
                 <button
                   onClick={() => {

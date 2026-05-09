@@ -2,9 +2,9 @@ import { useState } from "react";
 import { ShoppingBag, Loader2, Star, ArrowUpRight } from "lucide-react";
 import ProductViewModal from "./ProductViewModal";
 import { truncateText } from "../utils/truncateText";
-import { addToCart } from "./../../store/actions/index";
-import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
+import { useAppData } from "../../app/context/AppDataContext";
+import { normalizeImageUrl } from "../utils/imageUrl";
 
 const ProductCard = ({
                        productId,
@@ -27,7 +27,7 @@ const ProductCard = ({
   const resolvedCategoryName =
       categoryName || category?.categoryName || category?.name || "General";
 
-  const dispatch = useDispatch();
+  const { addToCartItem } = useAppData();
 
   const handleProductView = () => {
     if (!about) {
@@ -41,13 +41,20 @@ const ProductCard = ({
 
     setBtnLoader(true);
     try {
-      await dispatch(addToCart({
+      const result = await addToCartItem({
         productId, productName, image, description, quantity, price, discount, specialPrice
-      }, 1, toast));
+      }, 1);
+      if (!result?.success) {
+        toast.error(result?.message || "Failed to add product.");
+        return;
+      }
+      toast.success(result?.message || "Added to cart.");
     } finally {
       setBtnLoader(false);
     }
   };
+
+  const resolvedImage = normalizeImageUrl(image) || "http://localhost:5000/images/default.png";
 
   return (
       <div
@@ -57,7 +64,7 @@ const ProductCard = ({
         {/* --- IMAGE SECTION --- */}
         <div className="relative aspect-square overflow-hidden rounded-[2rem] bg-[#fdfdfd] border border-slate-50">
           <img
-              src={image || "http://localhost:5000/images/default.png"}
+              src={resolvedImage}
               alt={productName}
               className="w-full h-full object-contain p-6 transition-transform duration-700 group-hover:scale-110"
           />
@@ -65,9 +72,7 @@ const ProductCard = ({
           {/* Top Badges */}
           <div className="absolute top-4 left-4 flex flex-col gap-2">
             {specialPrice && (
-                <span className="bg-orange-500 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full shadow-lg shadow-orange-200">
-              Sale
-            </span>
+                <span></span>
             )}
             {!isAvailable && (
                 <span className="bg-slate-900 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full">
@@ -94,16 +99,6 @@ const ProductCard = ({
 
         {/* --- CONTENT SECTION --- */}
         <div className="mt-5 px-3 pb-2">
-          <div className="flex justify-between items-start mb-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600">
-              {resolvedCategoryName}
-            </p>
-            <div className="flex items-center gap-1">
-              <Star size={10} className="fill-orange-400 text-orange-400" />
-              <span className="text-[10px] font-bold text-slate-400">4.9</span>
-            </div>
-          </div>
-
           <h2 className="text-xl font-bold tracking-tight text-slate-800 leading-tight group-hover:text-teal-700 transition-colors">
             {truncateText(productName, 35)}
           </h2>
@@ -144,7 +139,7 @@ const ProductCard = ({
               id: productId,
               productName,
               categoryName: resolvedCategoryName,
-              image,
+              image: resolvedImage,
               description,
               quantity,
               price,

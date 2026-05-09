@@ -1,18 +1,14 @@
 import { MdArrowBack, MdShoppingCart } from "react-icons/md";
 import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
-import { useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import ItemContent from "../components/ItemContent";
 import CartEmpty from "../components/CartEmpty";
 import { formatPrice } from "../../../shared/utils/formatPrice";
-import { fetchUserCart } from "../../../store/actions";
+import { useAppData } from "../../../app/context/AppDataContext";
 
 const Cart = () => {
-  const dispatch = useDispatch();
-  const { cart } = useSelector((state) => state.carts);
-  const { user } = useSelector((state) => state.auth);
+  const { cart, user, fetchCart } = useAppData();
   const [isLoadingCart, setIsLoadingCart] = useState(false);
   
   useEffect(() => {
@@ -21,12 +17,15 @@ const Cart = () => {
         return;
       }
       setIsLoadingCart(true);
-      await dispatch(fetchUserCart(toast));
+      const result = await fetchCart();
+      if (!result?.success) {
+        toast.error(result?.message || "Failed to load cart.");
+      }
       setIsLoadingCart(false);
     };
 
     loadCart();
-  }, [dispatch, user]);
+  }, [user, fetchCart]);
 
   const totalPrice = cart?.reduce(
     (acc, cur) => acc + Number(cur?.specialPrice) * Number(cur?.quantity), 0

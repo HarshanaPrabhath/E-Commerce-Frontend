@@ -1,19 +1,33 @@
-import React, { useCallback, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchCategories } from "../../../store/actions";
+import React, { useCallback, useEffect, useState } from "react";
+import { adminProductApi } from "../../admin/api/adminProductApi";
 import AddCategoryForm from "../components/AddCategoryForm";
 import AddProductForm from "../components/AddProductForm";
 
-const CATEGORY_QUERY = "pageNumber=0&pageSize=2&sortBy=categoryName&sortOrder=asc";
-
 function AddProductPage() {
-  const dispatch = useDispatch();
-  const { categories } = useSelector((state) => state.productList);
-  const { categoryLoader, categoryError } = useSelector((state) => state.errors);
+  const [categories, setCategories] = useState([]);
+  const [categoryLoader, setCategoryLoader] = useState(false);
+  const [categoryError, setCategoryError] = useState("");
 
-  const loadCategories = useCallback(() => {
-    dispatch(fetchCategories(CATEGORY_QUERY));
-  }, [dispatch]);
+  const loadCategories = useCallback(async () => {
+    setCategoryLoader(true);
+    setCategoryError("");
+    try {
+      const data = await adminProductApi.getCategories();
+      setCategories(data.map((item) => ({
+        categoryId: item.id,
+        categoryName: item.name,
+      })));
+    } catch (error) {
+      setCategoryError(
+        error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          error?.message ||
+          "Failed to load categories."
+      );
+    } finally {
+      setCategoryLoader(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadCategories();

@@ -1,6 +1,41 @@
+import { useState } from "react";
+import toast from "react-hot-toast";
 import { FaMapMarkedAlt, FaPhone, FaRegEnvelope, FaTwitter, FaLinkedinIn, FaGithub, FaPaperPlane } from "react-icons/fa";
+import { saveContactMessage } from "../../../shared/utils/contactMessages";
 
 const Contact = () => {
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    message: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (event) => {
+    const { id, value } = event.target;
+    setForm((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const payload = {
+      name: form.name.trim(),
+      email: form.email.trim(),
+      message: form.message.trim(),
+    };
+
+    if (!payload.name || !payload.email || !payload.message) {
+      toast.error("Please fill all fields.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    saveContactMessage(payload);
+    setForm({ name: "", email: "", message: "" });
+    setIsSubmitting(false);
+    toast.success("Message sent successfully.");
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#f8fafc] p-4 md:p-10 relative overflow-hidden">
       {/* Main Container */}
@@ -15,25 +50,55 @@ const Contact = () => {
             <p className="text-slate-500 mt-4 text-lg max-w-md">Have a project in mind? Fill out the form and our team will get back to you shortly.</p>
           </div>
 
-          <form className="space-y-8">
+          <form className="space-y-8" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="relative group">
-                <input type="text" required id="name" placeholder=" " className="peer w-full px-0 py-3 bg-transparent border-b-2 border-slate-200 focus:border-teal-500 outline-none transition-all" />
+                <input
+                  type="text"
+                  required
+                  id="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  placeholder=" "
+                  className="peer w-full px-0 py-3 bg-transparent border-b-2 border-slate-200 focus:border-teal-500 outline-none transition-all"
+                />
                 <label htmlFor="name" className="absolute left-0 top-3 text-slate-400 pointer-events-none transition-all peer-focus:-top-4 peer-focus:text-xs peer-focus:font-bold peer-focus:text-teal-600 peer-[:not(:placeholder-shown)]:-top-4 peer-[:not(:placeholder-shown)]:text-xs">Full Name</label>
               </div>
               <div className="relative group">
-                <input type="email" required id="email" placeholder=" " className="peer w-full px-0 py-3 bg-transparent border-b-2 border-slate-200 focus:border-teal-500 outline-none transition-all" />
+                <input
+                  type="email"
+                  required
+                  id="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder=" "
+                  className="peer w-full px-0 py-3 bg-transparent border-b-2 border-slate-200 focus:border-teal-500 outline-none transition-all"
+                />
                 <label htmlFor="email" className="absolute left-0 top-3 text-slate-400 pointer-events-none transition-all peer-focus:-top-4 peer-focus:text-xs peer-focus:font-bold peer-focus:text-teal-600 peer-[:not(:placeholder-shown)]:-top-4 peer-[:not(:placeholder-shown)]:text-xs">Email Address</label>
               </div>
             </div>
 
             <div className="relative group">
-              <textarea rows="4" required id="message" placeholder=" " className="peer w-full px-0 py-3 bg-transparent border-b-2 border-slate-200 focus:border-teal-500 outline-none transition-all resize-none" />
+              <textarea
+                rows="4"
+                required
+                id="message"
+                value={form.message}
+                onChange={handleChange}
+                placeholder=" "
+                className="peer w-full px-0 py-3 bg-transparent border-b-2 border-slate-200 focus:border-teal-500 outline-none transition-all resize-none"
+              />
               <label htmlFor="message" className="absolute left-0 top-3 text-slate-400 pointer-events-none transition-all peer-focus:-top-4 peer-focus:text-xs peer-focus:font-bold peer-focus:text-teal-600 peer-[:not(:placeholder-shown)]:-top-4 peer-[:not(:placeholder-shown)]:text-xs">Your Message</label>
             </div>
 
-            <button className="group relative w-full md:w-max px-10 py-4 bg-slate-900 text-white font-bold rounded-2xl overflow-hidden transition-all hover:pr-14 active:scale-95 shadow-xl">
-              <span className="relative z-10">Send Message</span>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="group relative w-full md:w-max px-10 py-4 bg-slate-900 text-white font-bold rounded-2xl overflow-hidden transition-all hover:pr-14 active:scale-95 shadow-xl disabled:opacity-70"
+            >
+              <span className="relative z-10">
+                {isSubmitting ? "Sending..." : "Send Message"}
+              </span>
               <div className="absolute inset-0 bg-orange-500 translate-y-[100%] group-hover:translate-y-0 transition-transform duration-300" />
               <FaPaperPlane className="absolute right-5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all z-20" />
             </button>

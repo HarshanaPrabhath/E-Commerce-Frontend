@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { addProduct } from "../../../store/actions";
 import toast from "react-hot-toast";
+import { adminProductApi } from "../../admin/api/adminProductApi";
+import { uploadImageToCloudinary } from "../../../shared/utils/cloudinaryUpload";
+import { normalizeImageUrl } from "../../../shared/utils/imageUrl";
 
 function AddProductForm({ categories = [], categoryLoader = false, categoryError = null }) {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
 
   const [product, setProduct] = useState({
     productName: "",
@@ -17,6 +17,8 @@ function AddProductForm({ categories = [], categoryLoader = false, categoryError
     discount: ""
   });
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   useEffect(() => {
     if (!selectedCategoryId && categories?.length) {
@@ -26,13 +28,46 @@ function AddProductForm({ categories = [], categoryLoader = false, categoryError
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "image" && uploadError) {
+      setUploadError("");
+    }
     setProduct((prev) => ({
       ...prev,
-      [name]: value
+      [name]: name === "image" ? normalizeImageUrl(value) : value
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      setUploadError("Please select a valid image file.");
+      return;
+    }
+    setUploadError("");
+    setIsUploadingImage(true);
+    try {
+      const imageUrl = await uploadImageToCloudinary(file);
+      setProduct((prev) => ({ ...prev, image: imageUrl }));
+      toast.success("Image uploaded to Cloudinary.");
+    } catch (error) {
+      const message = error?.message || "Image upload failed.";
+      setUploadError(message);
+      toast.error(message);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleImageFileChange = (event) => {
+    handleImageUpload(event.target.files?.[0]);
+  };
+
+  const handleDropImage = (event) => {
+    event.preventDefault();
+    handleImageUpload(event.dataTransfer?.files?.[0]);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!selectedCategoryId) {
@@ -52,7 +87,18 @@ function AddProductForm({ categories = [], categoryLoader = false, categoryError
       discount: Number(product.discount)
     };
 
-    dispatch(addProduct(selectedCategoryId, finalData, toast, navigate));
+    try {
+      await adminProductApi.createProduct({ ...finalData, categoryId: selectedCategoryId });
+      toast.success("Product created.");
+      navigate("/manage-products");
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          error?.message ||
+          "Failed to create product."
+      );
+    }
   };
 
   return (
@@ -105,6 +151,7 @@ function AddProductForm({ categories = [], categoryLoader = false, categoryError
         value={product.quantity}
         onChange={handleChange}
         className="w-full mb-4 px-3 py-2 border rounded"
+        placeholder="quantity"
         required
       />
 
@@ -118,6 +165,23 @@ function AddProductForm({ categories = [], categoryLoader = false, categoryError
         placeholder="https://example.com/images/headphones.jpg"
         required
       />
+      <div
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={handleDropImage}
+        className="w-full mb-3 px-3 py-4 border border-dashed rounded text-sm text-slate-600 bg-slate-50"
+      >
+        Drag & drop image here or choose file
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageFileChange}
+          className="block w-full mt-2"
+        />
+        <p className="mt-1 text-xs text-slate-500">
+          {isUploadingImage ? "Uploading to Cloudinary..." : "Cloudinary upload enabled"}
+        </p>
+      </div>
+      {uploadError ? <p className="text-sm text-rose-600 mb-3">{uploadError}</p> : null}
       {product.image ? (
         <img
           src={product.image}
@@ -149,9 +213,10 @@ function AddProductForm({ categories = [], categoryLoader = false, categoryError
 
       <button
         type="submit"
+        disabled={isUploadingImage}
         className="bg-teal-600 text-white px-4 py-2 rounded hover:bg-teal-700"
       >
-        Add Product
+        {isUploadingImage ? "Uploading..." : "Add Product"}
       </button>
     </form>
   );

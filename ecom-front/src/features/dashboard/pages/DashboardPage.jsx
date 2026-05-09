@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, ShieldCheck, Activity } from "lucide-react"; // Added for aesthetic
+import { Search, ShieldCheck } from "lucide-react";
 import { api } from "../../../services/api/api";
 import { extractOrdersList, resolveOrderId, resolveOrderStatus, resolveOrderTotal } from "../../../shared/utils/orderData";
 import AddressDetailsModal from "../components/AddressDetailsModal";
@@ -54,17 +54,29 @@ function DashboardPage() {
   };
 
   const summary = useMemo(() => {
+    const getStatus = (order) =>
+      String(
+        statusOverrides[String(resolveOrderId(order))] || resolveOrderStatus(order) || ""
+      ).toLowerCase();
+    const isDeclined = (status) =>
+      status.includes("decline") || status.includes("reject") || status.includes("cancel");
+    const isAccepted = (status) =>
+      ["order accepted", "accepted", "completed", "delivered", "paid"].includes(status);
+
     const totalOrders = orders.length;
-    const totalRevenue = orders.reduce((sum, order) => sum + resolveOrderTotal(order), 0);
-    const successfulPayments = orders.filter((order) =>
-        String(order?.paymentDTO?.pgStatus || "").toUpperCase() === "SUCCESS"
-    ).length;
-    const acceptedOrders = orders.filter((order) =>
-        ["order accepted", "accepted", "completed", "delivered", "paid"].includes(
-            String(resolveUiStatus(order) || "").toLowerCase()
-        )
-    ).length;
-    return { totalOrders, totalRevenue, successfulPayments, pendingOrders: Math.max(totalOrders - acceptedOrders, 0) };
+    const totalRevenue = orders.reduce((sum, order) => {
+      const status = getStatus(order);
+      return isDeclined(status) ? sum : sum + resolveOrderTotal(order);
+    }, 0);
+    const settledOrders = orders.filter((order) => isAccepted(getStatus(order))).length;
+    const declinedOrders = orders.filter((order) => isDeclined(getStatus(order))).length;
+    return {
+      totalOrders,
+      totalRevenue,
+      settledOrders,
+      pendingOrders: Math.max(totalOrders - settledOrders - declinedOrders, 0),
+      declinedOrders,
+    };
   }, [orders, statusOverrides]);
 
   const filteredOrders = useMemo(() => {
@@ -97,7 +109,9 @@ function DashboardPage() {
         (a) => String(a?.addressId ?? a?.id ?? "") === String(addressId)
       );
       matched ? setSelectedAddress(matched) : setAddressError("Address Node Not Found.");
-    } catch (e) { setAddressError("API Connection Failure."); }
+    } catch {
+      setAddressError("API Connection Failure.");
+    }
     finally { setIsAddressLoading(false); }
   };
 
@@ -124,7 +138,7 @@ function DashboardPage() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={18} />
               <input
                   type="text"
-                  placeholder="SEARCH_LOG_ID..."
+                  placeholder="SEARCH_ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full lg:w-80 h-14 pl-12 pr-6 bg-white border border-slate-100 rounded-2xl font-bold text-xs uppercase tracking-widest outline-none focus:ring-4 focus:ring-teal-500/5 focus:border-teal-500 shadow-sm transition-all"

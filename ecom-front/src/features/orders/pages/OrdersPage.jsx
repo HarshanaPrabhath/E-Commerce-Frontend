@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
 import { MdReceiptLong, MdArrowBack, MdCircle } from "react-icons/md";
 import { formatPrice } from "../../../shared/utils/formatPrice";
 import { api } from "../../../services/api/api";
+import { useAppData } from "../../../app/context/AppDataContext";
 import {
   extractOrdersList,
   resolveCurrentUserId,
@@ -26,12 +26,13 @@ const formatDate = (value) => {
 };
 
 function OrdersPage() {
-  const { user } = useSelector((state) => state.auth);
+  const { user } = useAppData();
+  const loggedUser = user?.user || user;
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const currentUserId = useMemo(() => resolveCurrentUserId(user), [user]);
+  const currentUserId = useMemo(() => resolveCurrentUserId(loggedUser), [loggedUser]);
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -77,7 +78,7 @@ function OrdersPage() {
                 Order History
               </h1>
               <p className="text-slate-500 mt-1 font-medium">
-                Manage and track your recent purchases, <span className="text-teal-600">{user?.username}</span>
+                Manage and track your recent purchases, <span className="text-teal-600">{loggedUser?.username}</span>
               </p>
             </div>
           </div>

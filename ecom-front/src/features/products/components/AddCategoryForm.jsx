@@ -1,10 +1,8 @@
 import React, { useState } from "react";
-import { useDispatch } from "react-redux";
-import { createCategory } from "../../../store/actions";
 import toast from "react-hot-toast";
+import { api } from "../../../services/api/api";
 
 function AddCategoryForm({ onCreated }) {
-  const dispatch = useDispatch();
   const [categoryName, setCategoryName] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -17,12 +15,22 @@ function AddCategoryForm({ onCreated }) {
     }
 
     setLoading(true);
-    const result = await dispatch(
-      createCategory({ categoryName: categoryName.trim() }, toast)
-    );
+    let success = false;
+    try {
+      await api.post("/public/categories", { categoryName: categoryName.trim() });
+      success = true;
+      toast.success("Category created.");
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          error?.message ||
+          "Failed to create category."
+      );
+    }
     setLoading(false);
 
-    if (result?.success) {
+    if (success) {
       setCategoryName("");
       if (onCreated) onCreated();
     }

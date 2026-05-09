@@ -1,15 +1,11 @@
-import { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchProducts } from "../../../store/actions";
 
 const useProductFilter = () => {
     const [searchParams] = useSearchParams();
-    const dispatch = useDispatch();
-    const searchKey = searchParams.toString();
 
-    useEffect(()=>{
-        const currentParams = new URLSearchParams(searchKey);
+    return useMemo(() => {
+        const currentParams = new URLSearchParams(searchParams.toString());
         const params = new URLSearchParams();
 
         const requestedPage = currentParams.get("page")
@@ -36,11 +32,8 @@ const useProductFilter = () => {
             params.set("keyword",keyword);
         }
 
-        const queryString = params.toString();
-        
-        dispatch(fetchProducts(queryString))
-        
-    },[dispatch,searchKey])
+        return params.toString();
+    }, [searchParams]);
 
 };
 

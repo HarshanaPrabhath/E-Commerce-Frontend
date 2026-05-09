@@ -3,13 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { AiOutlineLogin } from "react-icons/ai";
 import { InputField } from "../../../shared/components/InputField";
-import { useDispatch } from "react-redux";
-import { authenticateSignInUser } from "../../../store/actions";
 import toast from "react-hot-toast";
+import { useAppData } from "../../../app/context/AppDataContext";
 
 function Login() {
     const navigate = useNavigate();
-    const dispatch = useDispatch();
+    const { signIn } = useAppData();
     const [loader, setLoader] = useState(false);
 
     const {
@@ -20,7 +19,16 @@ function Login() {
     } = useForm({ mode: "onTouched" });
 
     const loginHandler = async (data) => {
-        dispatch(authenticateSignInUser(data, toast, reset, navigate, setLoader))
+        setLoader(true);
+        const result = await signIn(data);
+        setLoader(false);
+        if (!result?.success) {
+          toast.error(result?.message || "Login failed.");
+          return;
+        }
+        reset();
+        toast.success("Logged in successfully.");
+        navigate("/");
     }
 
     return (

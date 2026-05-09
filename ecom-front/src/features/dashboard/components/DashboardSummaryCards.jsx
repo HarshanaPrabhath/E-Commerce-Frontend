@@ -21,7 +21,7 @@ function DashboardSummaryCards({ summary }) {
         },
         {
             label: "Settled Orders",
-            value: summary.successfulPayments,
+            value: summary.settledOrders ?? 0,
             icon: CircleCheckBig,
             color: "text-teal-500",
             bg: "bg-white",
@@ -29,7 +29,7 @@ function DashboardSummaryCards({ summary }) {
         },
         {
             label: "Decline Orders",
-            value: summary.pendingOrders,
+            value: summary.declinedOrders,
             icon: Clock3,
             color: "text-orange-600",
             bg: "bg-white",
