@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Route, Routes } from "react-router-dom";
 import PrivateRoute from "../../shared/guards/PrivateRoute";
+import AdminRoute from "../../shared/guards/AdminRoute";
 import Loader from "../../shared/components/Loader";
 import BaseLayout from "../layouts/BaseLayout";
 import AuthLayout from "../layouts/AuthLayout";
@@ -17,6 +18,10 @@ const ContactPage = lazy(() => import("../../features/info/pages/ContactPage"));
 const CartPage = lazy(() => import("../../features/cart/pages/CartPage"));
 const CheckoutPage = lazy(() => import("../../features/checkout/pages/CheckoutPage"));
 const DashboardPage = lazy(() => import("../../features/dashboard/pages/DashboardPage"));
+const OrdersPage = lazy(() => import("../../features/orders/pages/OrdersPage"));
+const UserProfilePage = lazy(() =>
+  import("../../features/profile/pages/UserProfilePage")
+);
 const LoginPage = lazy(() => import("../../features/auth/pages/LoginPage"));
 const RegisterPage = lazy(() => import("../../features/auth/pages/RegisterPage"));
 const NotFoundPage = lazy(() => import("../../features/not-found/pages/NotFoundPage"));
@@ -33,14 +38,18 @@ function AppRouter() {
           <Route path="/cart" element={<CartPage />} />
           <Route element={<PrivateRoute />}>
             <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/profile" element={<UserProfilePage />} />
           </Route>
         </Route>
 
-        <Route >
-          <Route element={<AdminLayout />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/manage-products" element={<AdminProductsPage />} />
-            <Route path="/manage-categories" element={<AdminCategoriesPage />} />
+        <Route element={<PrivateRoute />}>
+          <Route element={<AdminRoute />}>
+            <Route element={<AdminLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/manage-products" element={<AdminProductsPage />} />
+              <Route path="/manage-categories" element={<AdminCategoriesPage />} />
+            </Route>
           </Route>
         </Route>
 

@@ -85,9 +85,27 @@ export const adminProductApi = {
   },
 
   async getCategories() {
-    let pageNumber = 0;
-    let all = [];
-    let lastPage = false;
+    const firstResponse = await api.get(
+      `/public/categories?pageNumber=0&pageSize=${CATEGORY_PAGE_SIZE}&sortBy=categoryName&sortOrder=asc`
+    );
+    const firstData = firstResponse?.data;
+    const firstItems = unwrapList(firstData).map(toCategory);
+
+    // Non-paginated response shape: plain array
+    if (Array.isArray(firstData)) {
+      return firstItems;
+    }
+
+    const totalPages = Number(firstData?.totalPages ?? 0);
+    const serverLastPage = parseBooleanish(firstData?.lastPage);
+    const shouldPaginate = totalPages > 1 || serverLastPage === false;
+    if (!shouldPaginate) {
+      return firstItems;
+    }
+
+    let pageNumber = 1;
+    let all = [...firstItems];
+    let lastPage = serverLastPage || false;
 
     while (!lastPage && pageNumber < MAX_CATEGORY_PAGES) {
       const { data } = await api.get(
@@ -95,12 +113,12 @@ export const adminProductApi = {
       );
       const current = unwrapList(data).map(toCategory);
       all = [...all, ...current];
-      const totalPages = Number(data?.totalPages ?? 0);
-      const serverLastPage = parseBooleanish(data?.lastPage);
+      const pageTotalPages = Number(data?.totalPages ?? totalPages);
+      const pageLastPage = parseBooleanish(data?.lastPage);
       lastPage =
-        serverLastPage ||
+        pageLastPage ||
         current.length === 0 ||
-        (totalPages > 0 && pageNumber >= totalPages - 1);
+        (pageTotalPages > 0 && pageNumber >= pageTotalPages - 1);
       pageNumber += 1;
     }
 

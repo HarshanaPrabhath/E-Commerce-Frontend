@@ -91,7 +91,7 @@ function CheckoutPage() {
       try {
         const res = await api.get("/addresses");
         data = res.data;
-      } catch (primaryError) {
+      } catch {
         const fallbackRes = await api.get("/users/addresses");
         data = fallbackRes.data;
       }

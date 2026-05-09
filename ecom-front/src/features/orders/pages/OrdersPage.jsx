@@ -1,9 +1,21 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { MdReceiptLong, MdArrowBack, MdCircle } from "react-icons/md";
 import { formatPrice } from "../../../shared/utils/formatPrice";
+import { api } from "../../../services/api/api";
+import {
+  extractOrdersList,
+  resolveCurrentUserId,
+  resolveOrderId,
+  resolveOrderItems,
+  resolveOrderTotal,
+  resolveOrderUserId,
+} from "../../../shared/utils/orderData";
 
 const formatDate = (value) => {
+  const dateValue = new Date(value);
+  if (Number.isNaN(dateValue.getTime())) return "N/A";
   return new Date(value).toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -15,10 +27,40 @@ const formatDate = (value) => {
 
 function OrdersPage() {
   const { user } = useSelector((state) => state.auth);
-  const { orders } = useSelector((state) => state.orders);
+  const [orders, setOrders] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const customerOrders = (orders ?? []).filter(
-    (order) => order.userId === user?.userId
+  const currentUserId = useMemo(() => resolveCurrentUserId(user), [user]);
+
+  useEffect(() => {
+    const loadOrders = async () => {
+      setIsLoading(true);
+      setErrorMessage("");
+      try {
+        const { data } = await api.get("/orders");
+        setOrders(extractOrdersList(data));
+      } catch (error) {
+        setErrorMessage(
+          error?.response?.data?.message ||
+            error?.message ||
+            "Failed to load orders."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadOrders();
+  }, []);
+
+  const customerOrders = useMemo(
+    () =>
+      (orders ?? []).filter(
+        (order) =>
+          String(resolveOrderUserId(order) ?? "") === String(currentUserId ?? "")
+      ),
+    [orders, currentUserId]
   );
 
   return (
@@ -48,7 +90,16 @@ function OrdersPage() {
           </Link>
         </div>
 
-        {!customerOrders.length ? (
+        {isLoading ? (
+          <div className="bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] p-16 text-center">
+            <p className="text-xl font-black text-slate-700">Loading orders...</p>
+          </div>
+        ) : errorMessage ? (
+          <div className="bg-white border-2 border-dashed border-rose-200 rounded-[2.5rem] p-16 text-center">
+            <p className="text-xl font-black text-rose-700">Could not load orders</p>
+            <p className="text-slate-500 mt-2">{errorMessage}</p>
+          </div>
+        ) : !customerOrders.length ? (
           <div className="bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] p-16 text-center">
             <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
                <MdReceiptLong size={40} className="text-slate-300" />
@@ -66,9 +117,12 @@ function OrdersPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            {customerOrders.map((order) => (
+            {customerOrders.map((order) => {
+              const orderId = resolveOrderId(order);
+              const orderItems = resolveOrderItems(order);
+              return (
               <article
-                key={order.orderId}
+                key={orderId}
                 className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.06)] hover:border-orange-100 transition-all duration-300 group"
               >
                 {/* Order Top Bar */}
@@ -76,7 +130,7 @@ function OrdersPage() {
                   <div className="flex items-center gap-6">
                     <div>
                       <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Order ID</p>
-                      <p className="text-slate-900 font-black tracking-tight">#{order.orderId.slice(-8).toUpperCase()}</p>
+                      <p className="text-slate-900 font-black tracking-tight">#{String(orderId).slice(-8).toUpperCase()}</p>
                     </div>
                     <div className="h-8 w-[1px] bg-slate-200 hidden sm:block"></div>
                     <div>
@@ -98,9 +152,9 @@ function OrdersPage() {
 
                 {/* Items List */}
                 <div className="px-8 py-6 space-y-4">
-                  {(order.items ?? []).map((item, idx) => (
+                  {orderItems.map((item, idx) => (
                     <div
-                      key={`${order.orderId}-${item.productId}-${idx}`}
+                      key={`${orderId}-${item.productId || idx}-${idx}`}
                       className="flex items-center justify-between group/item"
                     >
                       <div className="flex items-center gap-4">
@@ -112,7 +166,9 @@ function OrdersPage() {
                         </p>
                       </div>
                       <p className="font-black text-slate-900">
-                        {formatPrice(item.lineTotal)}
+                        {formatPrice(
+                          Number(item?.lineTotal ?? Number(item?.unitPrice ?? 0) * Number(item?.quantity ?? 0))
+                        )}
                       </p>
                     </div>
                   ))}
@@ -128,12 +184,13 @@ function OrdersPage() {
                   <div className="sm:text-right">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Amount</p>
                     <p className="text-3xl font-black text-teal-900 tracking-tighter">
-                      {formatPrice(order.total)}
+                      {formatPrice(resolveOrderTotal(order))}
                     </p>
                   </div>
                 </div>
               </article>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

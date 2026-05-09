@@ -37,6 +37,11 @@ function UserMenu() {
     dispatch(logOutUser(navigate));
   }
 
+  const handleNavigate = (path) => {
+    setOpen(false);
+    navigate(path);
+  };
+
   const handleListKeyDown = (event) => {
     if (event.key === "Tab") {
       event.preventDefault();
@@ -93,8 +98,9 @@ function UserMenu() {
                     aria-labelledby="user-menu-button"
                     onKeyDown={handleListKeyDown}
                   >
-                    <MenuItem onClick={()=>navigate("/manage-products")}>Manage Products</MenuItem>
-                    <MenuItem onClick={handleClose}>Order</MenuItem>
+                    <MenuItem onClick={() => handleNavigate("/profile")}>Profile</MenuItem>
+                    <MenuItem onClick={() => handleNavigate("/orders")}>Orders</MenuItem>
+                    <MenuItem onClick={() => handleNavigate("/manage-products")}>Manage Products</MenuItem>
                     <MenuItem onClick={logOutHandler}>Logout</MenuItem>
                   </MenuList>
                 </ClickAwayListener>
