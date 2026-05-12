@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { useDispatch } from "react-redux";
 import toast from "react-hot-toast";
 import SetQuantity from "./SetQuantity";
-import { decreaseCartQuantity, increaseCartQuantity, removeFromCart } from "../../../store/actions";
 import { formatPrice } from "../../../shared/utils/formatPrice";
 import { truncateText } from "../../../shared/utils/truncateText";
 import { HiOutlineTrash } from "react-icons/hi"; // Adding a subtle icon for the remove button
+import { useAppData } from "../../../app/context/AppDataContext";
 
 const ItemContent = ({
   productId,
@@ -19,7 +18,7 @@ const ItemContent = ({
   cartId,
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
-  const dispatch = useDispatch();
+  const { increaseCartItem, decreaseCartItem, removeCartItem } = useAppData();
 
   const productData = {
     productId,
@@ -36,23 +35,37 @@ const ItemContent = ({
   const handleQtyIncrease = (cartItems) => {
     if (isUpdating) return;
     setIsUpdating(true);
-    dispatch(increaseCartQuantity(cartItems.productId, toast)).finally(() =>
-      setIsUpdating(false)
-    );
+    increaseCartItem(cartItems.productId)
+      .then((result) => {
+        if (!result?.success) {
+          toast.error(result?.message || "Failed to update cart quantity.");
+        }
+      })
+      .finally(() => setIsUpdating(false));
   };
 
   const handleQtyDecrease = (cartItems) => {
     if (isUpdating || Number(quantity) <= 1) return;
     setIsUpdating(true);
-    dispatch(decreaseCartQuantity(cartItems.productId, toast)).finally(() =>
-      setIsUpdating(false)
-    );
+    decreaseCartItem(cartItems.productId)
+      .then((result) => {
+        if (!result?.success) {
+          toast.error(result?.message || "Failed to update cart quantity.");
+        }
+      })
+      .finally(() => setIsUpdating(false));
   };
 
   const removeItemFromCart = (cartItems) => {
     if (isUpdating) return;
     setIsUpdating(true);
-    dispatch(removeFromCart(cartItems, toast)).finally(() => setIsUpdating(false));
+    removeCartItem(cartItems)
+      .then((result) => {
+        if (!result?.success) {
+          toast.error(result?.message || "Failed to remove cart item.");
+        }
+      })
+      .finally(() => setIsUpdating(false));
   };
 
   return (

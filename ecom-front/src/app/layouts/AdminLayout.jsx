@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
-import { useDispatch } from "react-redux";
-import { logOutUser } from "../../store/actions";
+import { useAppData } from "../context/AppDataContext";
 import SideBar from "../../features/admin/components/SideBar";
 
 function AdminLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const dispatch = useDispatch();
+  const { signOut } = useAppData();
   const navigate = useNavigate();
 
-  const logOutHandler = () => {
-    dispatch(logOutUser(navigate));
+  const logOutHandler = async () => {
+    await signOut();
+    navigate("/login");
   };
 
   return (

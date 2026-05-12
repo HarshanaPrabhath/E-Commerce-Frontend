@@ -1,17 +1,19 @@
-import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import {
-  adminProductApi,
-  extractApiErrorMessage,
-} from "../api/adminProductApi";
+import { adminProductApi, extractApiErrorMessage } from "../api/adminProductApi";
+import AdminProductForm from "../components/AdminProductForm";
+import AdminProductFilters from "../components/AdminProductFilters";
+import AdminProductsPaginationControls from "../components/AdminProductsPaginationControls";
+import AdminProductTable from "../components/AdminProductTable";
+import { uploadImageToCloudinary } from "../../../shared/utils/cloudinaryUpload";
+import { normalizeImageUrl } from "../../../shared/utils/imageUrl";
 
 const initialForm = {
   productName: "",
   description: "",
-  quantity: 0,
-  price: 0,
-  discount: 0,
+  quantity: "",
+  price: "",
+  discount: "",
   image: "",
   categoryId: "",
 };
@@ -23,21 +25,30 @@ function AdminProductsPage() {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [stockFilter, setStockFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("name-asc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       const nextCategories = await adminProductApi.getCategories();
       setCategories(nextCategories);
-      setForm((prev) => ({
-        ...prev,
-        categoryId: prev.categoryId || nextCategories[0]?.id || "",
-      }));
+      if (nextCategories.length > 0) {
+        setForm((prev) =>
+          prev.categoryId ? prev : { ...prev, categoryId: nextCategories[0].id }
+        );
+      }
     } catch (error) {
       toast.error(extractApiErrorMessage(error, "Failed to load categories."));
     }
-  };
+  }, []);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     setLoading(true);
     try {
       const nextProducts = await adminProductApi.getProducts();
@@ -47,38 +58,68 @@ function AdminProductsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadCategories();
     loadProducts();
-  }, []);
+  }, [loadCategories, loadProducts]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
+    if (name === "image" && uploadError) {
+      setUploadError("");
+    }
     setForm((prev) => ({
       ...prev,
       [name]:
-        name === "quantity" || name === "price" || name === "discount"
-          ? Number(value)
+        name === "image"
+          ? normalizeImageUrl(value)
           : value,
     }));
   };
 
-  const resetForm = () => {
-    setEditingId(null);
-    setForm({
-      ...initialForm,
-      categoryId: categories[0]?.id || "",
-    });
+  const handleImageFileSelect = async (file) => {
+    if (!file) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      setUploadError("Please choose a valid image file.");
+      return;
+    }
+
+    setUploadError("");
+    setUploadingImage(true);
+    try {
+      const imageUrl = await uploadImageToCloudinary(file);
+      if (!imageUrl) {
+        throw new Error("No image URL returned from Cloudinary.");
+      }
+      setForm((prev) => ({ ...prev, image: normalizeImageUrl(imageUrl) }));
+      toast.success("Image uploaded.");
+    } catch (error) {
+      setUploadError(error?.message || "Image upload failed.");
+      toast.error(error?.message || "Image upload failed.");
+    } finally {
+      setUploadingImage(false);
+    }
   };
+
+  const resetForm = useCallback(() => {
+    setEditingId(null);
+    setUploadError("");
+    setForm({ ...initialForm, categoryId: categories[0]?.id || "" });
+  }, [categories]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setUploadError("");
     setSaving(true);
     try {
       if (!editingId && !form.categoryId) {
-        toast.error("No category found. Please create a category first.");
+        toast.error("Please select a category.");
+        return;
+      }
+      if (!form.image?.trim()) {
+        toast.error("Please upload or provide an image URL.");
         return;
       }
 
@@ -88,16 +129,13 @@ function AdminProductsPage() {
         quantity: Number(form.quantity),
         image: form.image,
         price: Number(form.price),
-        discount: Number(form.discount),
+        discount: Number(form.discount || 0),
       };
 
       if (editingId) {
         await adminProductApi.updateProduct(editingId, payload);
       } else {
-        await adminProductApi.createProduct({
-          ...payload,
-          categoryId: form.categoryId,
-        });
+        await adminProductApi.createProduct({ ...payload, categoryId: form.categoryId });
       }
 
       await loadProducts();
@@ -115,15 +153,18 @@ function AdminProductsPage() {
     setForm({
       productName: product.productName,
       description: product.description,
-      quantity: Number(product.quantity),
-      price: Number(product.price),
-      discount: Number(product.discount || 0),
+      quantity: String(Number(product.quantity)),
+      price: String(Number(product.price)),
+      discount: String(Number(product.discount || 0)),
       image: product.image,
       categoryId: product.categoryId,
     });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const onDelete = async (id) => {
+  const onDelete = async (product) => {
+    const id = product?.id;
+    if (!window.confirm("Are you sure you want to delete this product?")) return;
     try {
       await adminProductApi.deleteProduct(id);
       await loadProducts();
@@ -132,164 +173,179 @@ function AdminProductsPage() {
         resetForm();
       }
     } catch (error) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        toast.error("Delete failed: admin authorization required.");
+        return;
+      }
       toast.error(extractApiErrorMessage(error, "Failed to delete product."));
     }
   };
 
+  const filteredProducts = useMemo(() => {
+    const categoryNameById = new Map(
+      categories.map((category) => [String(category.id), category.name])
+    );
+    const categoryIdByName = new Map(
+      categories.map((category) => [
+        String(category.name || "").trim().toLowerCase(),
+        String(category.id),
+      ])
+    );
+
+    let next = [...products];
+    next = next.map((item) => ({
+      ...item,
+      categoryName:
+        String(item?.categoryName || "").trim() ||
+        categoryNameById.get(String(item?.categoryId || "")) ||
+        "-",
+    }));
+
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    if (normalizedSearch) {
+      next = next.filter((item) => {
+        const name = String(item?.productName || "").toLowerCase();
+        const category = String(item?.categoryName || "").toLowerCase();
+        return name.includes(normalizedSearch) || category.includes(normalizedSearch);
+      });
+    }
+
+    if (categoryFilter !== "all") {
+      const selectedCategoryName = String(categoryNameById.get(String(categoryFilter)) || "")
+        .trim()
+        .toLowerCase();
+      next = next.filter((item) => {
+        const directId = String(item?.categoryId || "").trim();
+        if (directId && directId === String(categoryFilter)) {
+          return true;
+        }
+
+        const itemCategoryName = String(item?.categoryName || "").trim().toLowerCase();
+        if (!itemCategoryName || !selectedCategoryName) {
+          return false;
+        }
+
+        const resolvedIdFromName = categoryIdByName.get(itemCategoryName);
+        return resolvedIdFromName === String(categoryFilter);
+      });
+    }
+
+    if (stockFilter === "in") {
+      next = next.filter((item) => Number(item?.quantity) > 0);
+    } else if (stockFilter === "out") {
+      next = next.filter((item) => Number(item?.quantity) <= 0);
+    }
+
+    next.sort((a, b) => {
+      if (sortBy === "name-asc") {
+        return String(a?.productName || "").localeCompare(String(b?.productName || ""));
+      }
+      if (sortBy === "name-desc") {
+        return String(b?.productName || "").localeCompare(String(a?.productName || ""));
+      }
+      if (sortBy === "price-asc") {
+        return Number(a?.price || 0) - Number(b?.price || 0);
+      }
+      if (sortBy === "price-desc") {
+        return Number(b?.price || 0) - Number(a?.price || 0);
+      }
+      if (sortBy === "stock-asc") {
+        return Number(a?.quantity || 0) - Number(b?.quantity || 0);
+      }
+      if (sortBy === "stock-desc") {
+        return Number(b?.quantity || 0) - Number(a?.quantity || 0);
+      }
+      return 0;
+    });
+
+    return next;
+  }, [products, categories, searchTerm, categoryFilter, stockFilter, sortBy]);
+
+  const totalPages = useMemo(() => {
+    const total = Math.ceil(filteredProducts.length / pageSize);
+    return total > 0 ? total : 1;
+  }, [filteredProducts.length, pageSize]);
+
+  const pagedProducts = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredProducts.slice(start, start + pageSize);
+  }, [filteredProducts, page, pageSize]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, categoryFilter, stockFilter, sortBy, pageSize]);
+
+  const hasActiveFilters = Boolean(
+    searchTerm.trim() ||
+      categoryFilter !== "all" ||
+      stockFilter !== "all" ||
+      sortBy !== "name-asc"
+  );
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setCategoryFilter("all");
+    setStockFilter("all");
+    setSortBy("name-asc");
+    setPage(1);
+  };
+
   return (
-    <section className="min-h-screen bg-slate-50 px-4 sm:px-6 lg:px-8 py-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-slate-900">Product CRUD</h1>
-          <button
-            type="button"
-            onClick={resetForm}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-slate-900 text-white text-sm"
-          >
-            <Plus size={16} />
-            New Product
-          </button>
+    <section className="min-h-screen bg-[#fcfcfc] px-4 sm:px-8 py-12">
+      <div className="max-w-7xl mx-auto space-y-10">
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tighter italic uppercase">
+              Inventory
+            </h1>
+            <p className="text-slate-500 font-bold text-sm tracking-widest">
+              MANAGEMENT PORTAL
+            </p>
+          </div>
         </header>
 
-        <form
+        <AdminProductForm
+          editingId={editingId}
+          form={form}
+          categories={categories}
+          saving={saving}
+          uploadingImage={uploadingImage}
+          uploadError={uploadError}
+          onChange={handleChange}
+          onImageFileSelect={handleImageFileSelect}
           onSubmit={handleSubmit}
-          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 bg-white border border-slate-200 p-4 rounded-md"
-        >
-          <input
-            name="productName"
-            value={form.productName}
-            onChange={handleChange}
-            className="border border-slate-300 px-3 py-2 rounded-md"
-            placeholder="Product name"
-            required
-          />
-          <input
-            name="image"
-            value={form.image}
-            onChange={handleChange}
-            className="border border-slate-300 px-3 py-2 rounded-md"
-            placeholder="Image URL"
-            required
-          />
-          <input
-            name="quantity"
-            type="number"
-            min="0"
-            value={form.quantity}
-            onChange={handleChange}
-            className="border border-slate-300 px-3 py-2 rounded-md"
-            placeholder="Quantity"
-            required
-          />
-          <input
-            name="price"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.price}
-            onChange={handleChange}
-            className="border border-slate-300 px-3 py-2 rounded-md"
-            placeholder="Price"
-            required
-          />
-          <input
-            name="discount"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.discount}
-            onChange={handleChange}
-            className="border border-slate-300 px-3 py-2 rounded-md"
-            placeholder="Discount"
-          />
-          <input
-            name="description"
-            value={form.description}
-            onChange={handleChange}
-            className="border border-slate-300 px-3 py-2 rounded-md md:col-span-2 xl:col-span-2"
-            placeholder="Description"
-            required
-          />
-          <div className="flex items-center gap-2">
-            <button
-              disabled={saving}
-              type="submit"
-              className="px-3 py-2 rounded-md bg-teal-600 text-white text-sm disabled:opacity-60"
-            >
-              {saving ? "Saving..." : editingId ? "Update Product" : "Create Product"}
-            </button>
-            {editingId ? (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="px-3 py-2 rounded-md border border-slate-300 text-sm"
-              >
-                Cancel
-              </button>
-            ) : null}
-          </div>
-        </form>
+          onReset={resetForm}
+        />
 
-        <div className="bg-white border border-slate-200 rounded-md overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-100 text-slate-700">
-              <tr>
-                <th className="text-left px-4 py-3">Product</th>
-                <th className="text-left px-4 py-3">Price</th>
-                <th className="text-left px-4 py-3">Qty</th>
-                <th className="text-left px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td className="px-4 py-4 text-slate-500" colSpan={4}>
-                    Loading products...
-                  </td>
-                </tr>
-              ) : products.length === 0 ? (
-                <tr>
-                  <td className="px-4 py-4 text-slate-500" colSpan={4}>
-                    No products.
-                  </td>
-                </tr>
-              ) : (
-                products.map((item) => (
-                  <tr key={item.id} className="border-t border-slate-200">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-slate-900">{item.productName}</div>
-                      <div className="text-slate-500 text-xs">{item.description}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      ${Number(item.price).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3">{item.quantity}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => onEdit(item)}
-                          className="p-2 rounded-md border border-slate-300"
-                          aria-label="Edit product"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDelete(item.id)}
-                          className="p-2 rounded-md border border-rose-200 text-rose-600"
-                          aria-label="Delete product"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <AdminProductFilters
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          stockFilter={stockFilter}
+          setStockFilter={setStockFilter}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          categories={categories}
+          filteredCount={filteredProducts.length}
+          totalCount={products.length}
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={resetFilters}
+        />
+
+        <AdminProductTable
+          loading={loading}
+          products={pagedProducts}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       </div>
     </section>
   );

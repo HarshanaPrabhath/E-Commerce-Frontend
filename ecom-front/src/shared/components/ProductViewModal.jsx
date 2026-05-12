@@ -1,156 +1,176 @@
-import { useState } from "react";
-import { FaShoppingCart } from "react-icons/fa";
-import { ShoppingBag, ArrowUpRight, Loader2 } from "lucide-react";
-import ProductViewModal from "./ProductViewModal";
-import { truncateText } from "../utils/truncateText";
-import { addToCart } from "./../../store/actions/index";
-import { useDispatch } from "react-redux";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { X, ShoppingBag, Loader2, Minus, Plus } from "lucide-react";
 import toast from "react-hot-toast";
+import { useAppData } from "../../app/context/AppDataContext";
+import { normalizeImageUrl } from "../utils/imageUrl";
 
-const ProductCard = ({
-                       productId,
-                       productName,
-                       category,
-                       categoryName,
-                       image,
-                       description,
-                       quantity,
-                       price,
-                       discount,
-                       specialPrice,
-                       about = false,
-                       adminView = false,
-                     }) => {
-  const [openProductViewModel, setOpenProductViewModel] = useState(false);
-  const [btnLoader, setBtnLoader] = useState(false);
-  const isAvailable = quantity && Number(quantity) > 0;
+const DEFAULT_IMAGE = "http://localhost:5000/images/default.png";
 
-  const resolvedCategoryName =
-      categoryName || category?.categoryName || category?.name || "General";
+function ProductViewModal({ open, setOpen, product, isAvailable }) {
+  const { addToCartItem } = useAppData();
+  const [isAdding, setIsAdding] = useState(false);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
 
-  const dispatch = useDispatch();
+  useEffect(() => {
+    if (!open) return undefined;
+    const onEscape = (event) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [open, setOpen]);
 
-  const handleProductView = () => {
-    if (!about) {
-      setOpenProductViewModel(true);
+  useEffect(() => {
+    if (open) {
+      setSelectedQuantity(1);
     }
+  }, [open, product?.id, product?.productId]);
+
+  if (!open) return null;
+
+  const closeModal = (event) => {
+    if (event) event.stopPropagation();
+    setOpen(false);
   };
 
-  const addToCartHandler = async (e) => {
-    e.stopPropagation(); // Prevents triggering the modal
-    if (btnLoader || !isAvailable) return;
+  const resolvedImage = normalizeImageUrl(product?.image) || DEFAULT_IMAGE;
+  const maxQuantity = Math.max(1, Number(product?.quantity ?? 1));
+  const hasDiscount =
+    Number(product?.specialPrice ?? product?.price ?? 0) < Number(product?.price ?? 0);
 
-    setBtnLoader(true);
+  const handleAddToCart = async () => {
+    if (!isAvailable || isAdding) return;
+    setIsAdding(true);
     try {
-      await dispatch(addToCart({
-        productId, productName, image, description, quantity, price, discount, specialPrice
-      }, 1, toast));
+      const result = await addToCartItem({ ...product }, selectedQuantity);
+      if (!result?.success) {
+        toast.error(result?.message || "Failed to add product.");
+        return;
+      }
+      toast.success(result?.message || "Added to cart.");
+      setOpen(false);
     } finally {
-      setBtnLoader(false);
+      setIsAdding(false);
     }
   };
 
-  return (
-      <div
-          onClick={handleProductView}
-          className="group relative bg-white rounded-[2.5rem] p-4 transition-all duration-500 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.15)] border border-transparent hover:border-slate-100 cursor-pointer"
-      >
-        {/* Image Gallery Container */}
-        <div className="relative aspect-[1/1] overflow-hidden rounded-[2rem] bg-[#f9f9f9]">
-          <img
-              src={image || "http://localhost:5000/images/default.png"}
-              alt={productName}
-              className="w-full h-full object-contain p-4 transition-transform duration-700 scale-95 group-hover:scale-105"
-          />
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[220] flex items-center justify-center px-4 backdrop-blur-sm"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button
+        type="button"
+        className="absolute inset-0 bg-slate-900/40 transition-opacity"
+        onClick={closeModal}
+        aria-label="Close product view"
+      />
 
-          {/* Hover Overlay - Quick Actions */}
-          <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="relative w-full max-w-4xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-100 flex flex-col md:flex-row">
+        <button
+          type="button"
+          onClick={closeModal}
+          aria-label="Close product view"
+          className="absolute right-6 top-6 z-10 w-10 h-10 rounded-full bg-white/80 backdrop-blur-md text-slate-600 hover:text-orange-600 shadow-sm flex items-center justify-center border border-slate-200 transition-all hover:rotate-90"
+        >
+          <X size={20} />
+        </button>
 
-          {/* Availability Tag */}
-          {!isAvailable && (
-              <div className="absolute inset-0 backdrop-blur-[2px] bg-white/60 flex items-center justify-center">
-            <span className="bg-slate-900 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest">
-              Stock Out
-            </span>
-              </div>
-          )}
-
-          {/* Floating Add to Cart (Desktop) */}
-          {isAvailable && !adminView && !about && (
-              <button
-                  onClick={addToCartHandler}
-                  disabled={btnLoader}
-                  className="absolute bottom-4 right-4 w-14 h-14 bg-teal-600 text-white rounded-2xl flex items-center justify-center shadow-2xl translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 hover:bg-orange-500 disabled:bg-slate-400"
-              >
-                {btnLoader ? (
-                    <Loader2 className="animate-spin" size={20} />
-                ) : (
-                    <ShoppingBag size={20} />
-                )}
-              </button>
-          )}
+        <div className="w-full md:w-1/2 bg-slate-50 p-8 flex items-center justify-center relative">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-teal-500/5 blur-3xl rounded-full scale-75" />
+            <img
+              src={resolvedImage}
+              alt={product?.productName}
+              className="relative w-full h-[300px] md:h-[400px] object-contain mix-blend-multiply transform transition-transform duration-500 group-hover:scale-105"
+            />
+          </div>
         </div>
 
-        {/* Product Details */}
-        <div className="mt-6 px-2">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-600 mb-1">
-                {resolvedCategoryName}
-              </p>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900 leading-tight">
-                {truncateText(productName, 40)}
-              </h2>
-            </div>
-            <div className="flex flex-col items-end">
-              {specialPrice ? (
-                  <>
-                <span className="text-xs text-slate-400 line-through font-bold">
-                  ${Number(price).toFixed(2)}
-                </span>
-                    <span className="text-xl font-black text-slate-900">
-                  ${Number(specialPrice).toFixed(2)}
-                </span>
-                  </>
-              ) : (
-                  <span className="text-xl font-black text-slate-900">
-                ${Number(price).toFixed(2)}
-              </span>
-              )}
-            </div>
+        <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
+          <div className="space-y-2 mb-6">
+            <h2 className="text-3xl font-black text-slate-900 leading-tight">
+              {product?.productName || "Product Name"}
+            </h2>
           </div>
 
-          {/* Description Snippet */}
-          <p className="mt-3 text-slate-500 text-sm leading-relaxed line-clamp-2 font-medium">
-            {truncateText(description, 80)}
+          <p className="text-slate-500 text-sm leading-relaxed mb-8">
+            {product?.description || "Experience top-tier quality and design with our latest offering."}
           </p>
 
-          {/* View Details Link */}
-          <div className="mt-4 pt-4 border-t border-slate-50 flex items-center text-slate-400 group-hover:text-orange-500 transition-colors">
-            <span className="text-[10px] font-black uppercase tracking-widest">Full Specs</span>
-            <ArrowUpRight size={14} className="ml-1 translate-y-0.5" />
+          <div className="flex items-center gap-4 mb-8">
+            {hasDiscount ? (
+              <>
+                <span className="text-4xl font-black text-teal-600">
+                  ${Number(product?.specialPrice).toFixed(2)}
+                </span>
+                <span className="text-lg font-bold text-slate-300 line-through">
+                  ${Number(product?.price).toFixed(2)}
+                </span>
+              </>
+            ) : (
+              <span className="text-4xl font-black text-slate-900">
+                ${Number(product?.price ?? 0).toFixed(2)}
+              </span>
+            )}
           </div>
+
+          <div className="mb-6 flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3">
+            <span className="text-xs font-black uppercase tracking-widest text-slate-500">Quantity</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedQuantity((prev) => Math.max(1, prev - 1))}
+                disabled={!isAvailable || isAdding || selectedQuantity <= 1}
+                className="h-9 w-9 rounded-xl border border-slate-200 text-slate-700 flex items-center justify-center disabled:opacity-40"
+                aria-label="Decrease quantity"
+              >
+                <Minus size={16} />
+              </button>
+              <span className="min-w-8 text-center text-lg font-black text-slate-900">
+                {selectedQuantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedQuantity((prev) => Math.min(maxQuantity, prev + 1))}
+                disabled={!isAvailable || isAdding || selectedQuantity >= maxQuantity}
+                className="h-9 w-9 rounded-xl border border-slate-200 text-slate-700 flex items-center justify-center disabled:opacity-40"
+                aria-label="Increase quantity"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={!isAvailable || isAdding}
+            className={`group relative h-14 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all
+              ${
+                isAvailable
+                  ? "bg-teal-600 text-white shadow-xl shadow-teal-100 hover:bg-teal-700 hover:-translate-y-1"
+                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
+              }`}
+          >
+            {isAdding ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <ShoppingBag size={20} className="group-hover:animate-bounce" />
+            )}
+            {isAdding ? "Processing..." : isAvailable ? "Add To Cart" : "Currently Unavailable"}
+
+            {isAvailable && !isAdding && (
+              <div className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+            )}
+          </button>
         </div>
-
-        {/* Modal */}
-        <ProductViewModal
-            open={openProductViewModel}
-            setOpen={setOpenProductViewModel}
-            product={{
-              id: productId,
-              productName,
-              categoryName: resolvedCategoryName,
-              image,
-              description,
-              quantity,
-              price,
-              discount,
-              specialPrice,
-            }}
-            isAvailable={isAvailable}
-        />
       </div>
+    </div>
   );
-};
 
-export default ProductCard;
+  return createPortal(modalContent, document.body);
+}
+
+export default ProductViewModal;

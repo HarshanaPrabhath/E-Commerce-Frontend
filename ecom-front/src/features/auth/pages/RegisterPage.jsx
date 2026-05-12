@@ -2,14 +2,13 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { InputField } from "../../../shared/components/InputField";
-import { useDispatch } from "react-redux";
-import { registerNewUser } from "../../../store/actions";
 import toast from "react-hot-toast";
 import { FaUserPlus } from "react-icons/fa";
+import { useAppData } from "../../../app/context/AppDataContext";
 
 function Register() {
     const navigate = useNavigate();
-    const dispatch = useDispatch();
+    const { signUp } = useAppData();
     const [loader, setLoader] = useState(false);
 
     const {
@@ -20,7 +19,16 @@ function Register() {
     } = useForm({ mode: "onTouched" });
 
     const registerHandler = async (data) => {
-        dispatch(registerNewUser(data, toast, reset, navigate, setLoader))
+        setLoader(true);
+        const result = await signUp(data);
+        setLoader(false);
+        if (!result?.success) {
+          toast.error(result?.message || "Registration failed.");
+          return;
+        }
+        reset();
+        toast.success(result?.message || "Account created.");
+        navigate("/login");
     }
 
     return (

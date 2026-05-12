@@ -7,18 +7,18 @@ import {
   Info,
   Phone,
   ShoppingBag,
+  User,
+  LayoutDashboard,
 } from "lucide-react";
 import { Badge } from "@mui/material";
 import { FaShoppingCart, FaStore } from "react-icons/fa";
-import { useSelector } from "react-redux";
-import UserMenu from "./UserMenu";
+import { hasRole } from "../utils/authRoles";
+import { useAppData } from "../../app/context/AppDataContext";
 
 function Navbar1() {
   const path = useLocation().pathname;
   const navigate = useNavigate();
-  
-  const { cart } = useSelector((state) => state.carts);
-  const { user } = useSelector((state) => state.auth);
+  const { cart, user, signOut } = useAppData();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -31,13 +31,24 @@ function Navbar1() {
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
   const handleLogin = () => navigate("/login");
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
-  const navLinks = [
+  const loggedUser = user?.user || user;
+
+  const isAdminUser = hasRole(loggedUser, "ROLE_ADMIN");
+
+  const baseNavLinks = [
     { name: "Home", link: "/", icon: <Home size={20} /> },
     { name: "Products", link: "/products", icon: <ShoppingBag size={20} /> },
     { name: "About", link: "/about", icon: <Info size={20} /> },
     { name: "Contact", link: "/contact", icon: <Phone size={20} /> },
   ];
+  const navLinks = isAdminUser
+    ? [...baseNavLinks, { name: "Dashboard", link: "/dashboard", icon: <LayoutDashboard size={20} /> }]
+    : baseNavLinks;
 
   return (
     <>
@@ -88,8 +99,22 @@ function Navbar1() {
                 </Badge>
               </Link>
 
-              {user && user.userId ? (
-                <UserMenu />
+              {loggedUser && (loggedUser.userId || loggedUser.id) ? (
+                <>
+                  <Link
+                    to="/profile"
+                    className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl font-bold text-sm transition-all"
+                  >
+                    <User size={16} />
+                    <span>{loggedUser?.username || "Profile"}</span>
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="bg-red-500/90 hover:bg-red-600 px-4 py-2 rounded-xl font-bold text-sm transition-all"
+                  >
+                    Sign Out
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={handleLogin}
@@ -167,10 +192,26 @@ function Navbar1() {
               </span>
             </Link>
 
-            {user && user.userId ? (
-              <div className="w-full flex justify-center py-2 bg-white/5 rounded-2xl">
-                <UserMenu />
-              </div>
+            {loggedUser && (loggedUser.userId || loggedUser.id) ? (
+              <>
+                <Link
+                  to="/profile"
+                  onClick={toggleMenu}
+                  className="w-full flex items-center gap-3 px-6 py-5 rounded-2xl bg-white/5 text-white font-bold border border-white/10"
+                >
+                  <User size={20} className="text-orange-400" />
+                  <span className="truncate">{loggedUser?.username || "Profile"}</span>
+                </Link>
+                <button
+                  onClick={() => {
+                    toggleMenu();
+                    handleSignOut();
+                  }}
+                  className="w-full py-5 bg-red-500 hover:bg-red-600 rounded-2xl font-black text-white shadow-2xl active:scale-95 transition-all"
+                >
+                  SIGN OUT
+                </button>
+              </>
             ) : (
               <button
                 onClick={() => { toggleMenu(); handleLogin(); }}
